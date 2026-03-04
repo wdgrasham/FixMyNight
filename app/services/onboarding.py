@@ -122,13 +122,10 @@ async def provision_client(payload, db: AsyncSession) -> Client:
             db.add(tech)
             await db.commit()
             await db.refresh(tech)
-            await send_verification_sms(tech, client)
-            await db.execute(
-                update(Technician)
-                .where(Technician.id == tech.id)
-                .values(phone_verified=True, verified_at=datetime.utcnow())
-            )
-            await db.commit()
+            try:
+                await send_verification_sms(tech, client)
+            except Exception as sms_err:
+                print(f"[WARNING] Verification SMS failed for {tech.name}: {sms_err}")
 
         return client
 

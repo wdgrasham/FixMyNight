@@ -250,16 +250,9 @@ async def add_technician(
     await db.commit()
     await db.refresh(tech)
 
-    # Send verification SMS
+    # Send verification SMS (tech stays unverified until they reply)
     try:
         await send_verification_sms(tech, client)
-        await db.execute(
-            update(Technician)
-            .where(Technician.id == tech.id)
-            .values(phone_verified=True, verified_at=datetime.utcnow())
-        )
-        await db.commit()
-        await db.refresh(tech)
     except Exception as e:
         print(f"[WARNING] Verification SMS failed: {e}")
 
@@ -320,12 +313,6 @@ async def update_technician(
         await db.refresh(tech)
         try:
             await send_verification_sms(tech, client)
-            await db.execute(
-                update(Technician)
-                .where(Technician.id == tech.id)
-                .values(phone_verified=True, verified_at=datetime.utcnow())
-            )
-            await db.commit()
         except Exception as e:
             print(f"[WARNING] Re-verification SMS failed: {e}")
 

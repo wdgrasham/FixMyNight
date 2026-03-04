@@ -275,20 +275,13 @@ async def add_technician(
 
     try:
         await send_verification_sms(tech, client)
-        await db.execute(
-            update(Technician)
-            .where(Technician.id == tech.id)
-            .values(phone_verified=True, verified_at=datetime.utcnow())
-        )
-        await db.commit()
-        await db.refresh(tech)
     except Exception as e:
         print(f"[WARNING] Verification SMS failed: {e}")
 
     await write_audit_log(
         db,
         "tech.added",
-        "admin",
+        "portal",
         resource_type="technician",
         resource_id=tech.id,
         client_id=client.id,
@@ -338,12 +331,6 @@ async def update_technician(
         await db.refresh(tech)
         try:
             await send_verification_sms(tech, client)
-            await db.execute(
-                update(Technician)
-                .where(Technician.id == tech.id)
-                .values(phone_verified=True, verified_at=datetime.utcnow())
-            )
-            await db.commit()
         except Exception as e:
             print(f"[WARNING] Re-verification SMS failed: {e}")
 

@@ -50,19 +50,34 @@ async def twilio_sms(request: Request, db: AsyncSession = Depends(get_db)):
     if not client:
         return Response(content="", media_type="application/xml")
 
+    # Look up tech — include unverified techs so first reply can verify them
     result = await db.execute(
         select(Technician).where(
             Technician.phone == from_number,
             Technician.client_id == client.id,
             Technician.is_active == True,
-            Technician.phone_verified == True,
         )
     )
     tech = result.scalar_one_or_none()
 
-    # Unknown or unverified sender — silent ignore per Architecture Rule 9
+    # Unknown sender — silent ignore per Architecture Rule 9
     if not tech:
         return Response(content="", media_type="application/xml")
+
+    # Valid commands from known techs
+    if body not in ("ON", "OFF", "STATUS"):
+        # Unrecognized message — silent ignore
+        return Response(content="", media_type="application/xml")
+
+    # First valid command from unverified tech → verify them
+    if not tech.phone_verified:
+        await db.execute(
+            update(Technician)
+            .where(Technician.id == tech.id)
+            .values(phone_verified=True, verified_at=datetime.utcnow())
+        )
+        await db.commit()
+        await db.refresh(tech)
 
     if body == "ON":
         await _handle_on_call_on(tech, client, db)
@@ -70,7 +85,6 @@ async def twilio_sms(request: Request, db: AsyncSession = Depends(get_db)):
         await _handle_on_call_off(tech, client, db)
     elif body == "STATUS":
         await _handle_status_request(tech, client, db)
-    # All other messages: silent ignore
 
     return Response(content="", media_type="application/xml")
 

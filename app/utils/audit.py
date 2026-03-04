@@ -20,7 +20,7 @@ async def write_audit_log(
         resource_type=resource_type,
         resource_id=resource_id,
         client_id=client_id,
-        metadata=metadata or {},
+        meta=metadata or {},
     )
     db.add(log)
     await db.commit()

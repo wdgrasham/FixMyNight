@@ -104,7 +104,7 @@ class AuditLog(Base):
     actor_id = Column(String)
     resource_type = Column(String)
     resource_id = Column(UUID(as_uuid=True))
-    metadata = Column(JSONB, default=dict)
+    meta = Column("metadata", JSONB, default=dict)
     client_id = Column(UUID(as_uuid=True), ForeignKey("clients.id"))
 
 

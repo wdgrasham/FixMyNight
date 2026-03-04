@@ -1,7 +1,8 @@
 from sqlalchemy import (
     Column, String, Boolean, DECIMAL, ARRAY, Integer, Text, ForeignKey, Date,
+    DateTime, Time,
 )
-from sqlalchemy.dialects.postgresql import UUID, JSONB, TIMESTAMPTZ, TIME
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import declarative_base
 import uuid
 
@@ -11,8 +12,8 @@ Base = declarative_base()
 class Client(Base):
     __tablename__ = "clients"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    created_at = Column(TIMESTAMPTZ)
-    updated_at = Column(TIMESTAMPTZ)
+    created_at = Column(DateTime(timezone=True))
+    updated_at = Column(DateTime(timezone=True))
     business_name = Column(String, nullable=False)
     owner_name = Column(String, nullable=False)
     owner_phone = Column(String, nullable=False)
@@ -25,42 +26,42 @@ class Client(Base):
     emergency_fee = Column(DECIMAL(10, 2))
     admin_sms_numbers = Column(JSONB, nullable=False, default=list)
     timezone = Column(String, nullable=False, default="America/Chicago")
-    business_hours_start = Column(TIME)
-    business_hours_end = Column(TIME)
+    business_hours_start = Column(Time)
+    business_hours_end = Column(Time)
     business_days = Column(ARRAY(Integer), default=[1, 2, 3, 4, 5])
     business_hours_emergency_dispatch = Column(Boolean, nullable=False, default=True)
-    sleep_window_start = Column(TIME)
-    sleep_window_end = Column(TIME)
-    summary_send_time = Column(TIME, nullable=False, default="07:30:00")
-    callback_expected_time = Column(TIME, nullable=False, default="09:00:00")
+    sleep_window_start = Column(Time)
+    sleep_window_end = Column(Time)
+    summary_send_time = Column(Time, nullable=False, default="07:30:00")
+    callback_expected_time = Column(Time, nullable=False, default="09:00:00")
     agent_name = Column(String, nullable=False, default="Sarah")
     vapi_phone_number_id = Column(String)
     status = Column(String, nullable=False, default="pending")
     last_summary_sent_date = Column(Date)
     portal_password_hash = Column(String)
-    portal_last_login = Column(TIMESTAMPTZ)
+    portal_last_login = Column(DateTime(timezone=True))
 
 
 class Technician(Base):
     __tablename__ = "technicians"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    created_at = Column(TIMESTAMPTZ)
-    updated_at = Column(TIMESTAMPTZ)
+    created_at = Column(DateTime(timezone=True))
+    updated_at = Column(DateTime(timezone=True))
     client_id = Column(UUID(as_uuid=True), ForeignKey("clients.id"), nullable=False)
     name = Column(String, nullable=False)
     phone = Column(String, nullable=False)
     on_call = Column(Boolean, nullable=False, default=False)
-    on_call_start = Column(TIMESTAMPTZ)
-    on_call_end = Column(TIMESTAMPTZ)
+    on_call_start = Column(DateTime(timezone=True))
+    on_call_end = Column(DateTime(timezone=True))
     phone_verified = Column(Boolean, nullable=False, default=False)
-    verified_at = Column(TIMESTAMPTZ)
+    verified_at = Column(DateTime(timezone=True))
     is_active = Column(Boolean, nullable=False, default=True)
 
 
 class Call(Base):
     __tablename__ = "calls"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    created_at = Column(TIMESTAMPTZ)
+    created_at = Column(DateTime(timezone=True))
     client_id = Column(UUID(as_uuid=True), ForeignKey("clients.id"), nullable=False)
     caller_phone = Column(String)
     caller_name = Column(String)
@@ -77,7 +78,7 @@ class Call(Base):
     transferred_to_tech_id = Column(UUID(as_uuid=True), ForeignKey("technicians.id"))
     vapi_call_id = Column(String, unique=True)
     idempotency_key = Column(String, unique=True)
-    morning_summary_sent_at = Column(TIMESTAMPTZ)
+    morning_summary_sent_at = Column(DateTime(timezone=True))
     flagged_urgent = Column(Boolean, nullable=False, default=False)
     requires_callback = Column(Boolean, nullable=False, default=True)
 
@@ -85,11 +86,11 @@ class Call(Base):
 class RoutingRule(Base):
     __tablename__ = "routing_rules"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    created_at = Column(TIMESTAMPTZ)
-    updated_at = Column(TIMESTAMPTZ)
+    created_at = Column(DateTime(timezone=True))
+    updated_at = Column(DateTime(timezone=True))
     client_id = Column(UUID(as_uuid=True), ForeignKey("clients.id"), unique=True, nullable=False)
-    after_hours_start = Column(TIME, nullable=False)
-    after_hours_end = Column(TIME, nullable=False)
+    after_hours_start = Column(Time, nullable=False)
+    after_hours_end = Column(Time, nullable=False)
     last_oncall_reminder_date = Column(Date)
     is_active = Column(Boolean, nullable=False, default=True)
 
@@ -97,7 +98,7 @@ class RoutingRule(Base):
 class AuditLog(Base):
     __tablename__ = "audit_logs"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    created_at = Column(TIMESTAMPTZ)
+    created_at = Column(DateTime(timezone=True))
     event_type = Column(String, nullable=False)
     actor_type = Column(String, nullable=False)
     actor_id = Column(String)
@@ -110,7 +111,7 @@ class AuditLog(Base):
 class CronLog(Base):
     __tablename__ = "cron_log"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    created_at = Column(TIMESTAMPTZ)
+    created_at = Column(DateTime(timezone=True))
     job_name = Column(String, nullable=False)
     clients_matched = Column(Integer, nullable=False, default=0)
     clients_succeeded = Column(Integer, nullable=False, default=0)

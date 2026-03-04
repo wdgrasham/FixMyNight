@@ -4,7 +4,7 @@ from passlib.context import CryptContext
 from fastapi import HTTPException, status
 import os
 
-SECRET_KEY = os.environ["JWT_SECRET_KEY"]
+SECRET_KEY = os.environ["JWT_SECRET"]
 ALGORITHM = os.environ.get("JWT_ALGORITHM", "HS256")
 ADMIN_TOKEN_EXPIRE_HOURS = 8
 PORTAL_TOKEN_EXPIRE_HOURS = 24

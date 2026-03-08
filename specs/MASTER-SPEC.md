@@ -381,7 +381,7 @@ Unverified techs are skipped during emergency transfer — system falls to owner
 
 ### Portal Access
 
-Admin triggers magic link email to client's `contact_email`. Client clicks link, sets password on first visit. All subsequent logins use email + password at fixmyday.ai/portal/[client_id].
+Admin triggers magic link email to client's `contact_email`. Client clicks link, sets password on first visit. All subsequent logins use email + password at fixmyday.ai/fixmynight/portal/[client_id].
 
 ---
 
@@ -429,7 +429,7 @@ Admin triggers magic link email to client's `contact_email`. Client clicks link,
 | `VAPI_WEBHOOK_SECRET` | Validates incoming Vapi webhooks |
 | `TWILIO_ACCOUNT_SID` | Twilio account identifier |
 | `TWILIO_AUTH_TOKEN` | Twilio authentication |
-| `JWT_SECRET_KEY` | Signs all JWT tokens |
+| `JWT_SECRET` | Signs all JWT tokens |
 | `JWT_ALGORITHM` | HS256 |
 | `ADMIN_PASSWORD_HASH` | Bcrypt hash of admin password |
 | `SENDGRID_API_KEY` | Morning summary email delivery |

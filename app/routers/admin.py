@@ -1,4 +1,4 @@
-from datetime import datetime, time as dt_time
+from datetime import datetime, time as dt_time, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, func
@@ -62,7 +62,45 @@ async def list_clients(
 ):
     result = await db.execute(select(Client).order_by(Client.created_at.desc()))
     clients = result.scalars().all()
-    return [ClientResponse.model_validate(c) for c in clients]
+    client_ids = [c.id for c in clients]
+
+    # Fetch on-call tech names
+    on_call_result = await db.execute(
+        select(Technician.client_id, Technician.name).where(
+            Technician.client_id.in_(client_ids),
+            Technician.on_call == True,
+            Technician.is_active == True,
+        )
+    )
+    on_call_map = {row.client_id: row.name for row in on_call_result}
+
+    # Fetch 7-day and 24h call counts
+    seven_days_ago = datetime.utcnow() - timedelta(days=7)
+    calls_7d_result = await db.execute(
+        select(Call.client_id, func.count()).where(
+            Call.client_id.in_(client_ids),
+            Call.created_at >= seven_days_ago,
+        ).group_by(Call.client_id)
+    )
+    calls_7d_map = {row[0]: row[1] for row in calls_7d_result}
+
+    twenty_four_hours_ago = datetime.utcnow() - timedelta(hours=24)
+    calls_24h_result = await db.execute(
+        select(Call.client_id, func.count()).where(
+            Call.client_id.in_(client_ids),
+            Call.created_at >= twenty_four_hours_ago,
+        ).group_by(Call.client_id)
+    )
+    calls_24h_map = {row[0]: row[1] for row in calls_24h_result}
+
+    response = []
+    for c in clients:
+        data = ClientResponse.model_validate(c).model_dump()
+        data["on_call_tech"] = on_call_map.get(c.id)
+        data["calls_7d"] = calls_7d_map.get(c.id, 0)
+        data["calls_24h"] = calls_24h_map.get(c.id, 0)
+        response.append(data)
+    return response
 
 
 @router.post("/clients", response_model=ClientResponse)
@@ -187,6 +225,7 @@ async def get_client_calls(
     offset: int = Query(0, ge=0),
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
+    call_type: Optional[str] = None,
 ):
     query = select(Call).where(Call.client_id == client_id)
     count_query = select(func.count()).select_from(Call).where(Call.client_id == client_id)
@@ -197,6 +236,9 @@ async def get_client_calls(
     if date_to:
         query = query.where(Call.created_at <= date_to)
         count_query = count_query.where(Call.created_at <= date_to)
+    if call_type:
+        query = query.where(Call.call_type == call_type)
+        count_query = count_query.where(Call.call_type == call_type)
 
     total_result = await db.execute(count_query)
     total = total_result.scalar()
@@ -238,6 +280,38 @@ async def add_technician(
     client = client_result.scalar_one_or_none()
     if not client:
         raise HTTPException(status_code=404, detail="CLIENT_NOT_FOUND")
+
+    # Check for existing inactive tech with the same phone — reactivate instead of duplicating
+    existing = await db.execute(
+        select(Technician).where(
+            Technician.client_id == client_id,
+            Technician.phone == payload.phone,
+            Technician.is_active == False,
+        )
+    )
+    inactive_tech = existing.scalar_one_or_none()
+    if inactive_tech:
+        await db.execute(
+            update(Technician)
+            .where(Technician.id == inactive_tech.id)
+            .values(
+                is_active=True,
+                name=payload.name,
+                updated_at=datetime.utcnow(),
+            )
+        )
+        await db.commit()
+        await db.refresh(inactive_tech)
+        await write_audit_log(
+            db,
+            "tech.reactivated",
+            "admin",
+            resource_type="technician",
+            resource_id=inactive_tech.id,
+            client_id=client.id,
+            metadata={"tech_id": str(inactive_tech.id), "tech_name": payload.name, "via": "add_duplicate"},
+        )
+        return TechnicianResponse.model_validate(inactive_tech)
 
     tech = Technician(
         client_id=client_id,
@@ -361,3 +435,44 @@ async def delete_technician(
         metadata={"tech_id": str(tech.id), "tech_name": tech.name},
     )
     return {"status": "deactivated"}
+
+
+@router.post(
+    "/clients/{client_id}/technicians/{tech_id}/reactivate",
+    response_model=TechnicianResponse,
+)
+async def reactivate_technician(
+    client_id: str,
+    tech_id: str,
+    admin=Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Technician).where(
+            Technician.id == tech_id, Technician.client_id == client_id
+        )
+    )
+    tech = result.scalar_one_or_none()
+    if not tech:
+        raise HTTPException(status_code=404, detail="TECHNICIAN_NOT_FOUND")
+    if tech.is_active:
+        raise HTTPException(status_code=400, detail="TECHNICIAN_ALREADY_ACTIVE")
+
+    await db.execute(
+        update(Technician)
+        .where(Technician.id == tech_id)
+        .values(is_active=True, updated_at=datetime.utcnow())
+    )
+    await db.commit()
+    await db.refresh(tech)
+
+    await write_audit_log(
+        db,
+        "tech.reactivated",
+        "admin",
+        resource_type="technician",
+        resource_id=tech.id,
+        client_id=tech.client_id,
+        metadata={"tech_id": str(tech.id), "tech_name": tech.name},
+    )
+    return TechnicianResponse.model_validate(tech)

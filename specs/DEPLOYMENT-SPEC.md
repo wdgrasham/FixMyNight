@@ -40,14 +40,15 @@ Never commit secrets to code.
 | `TWILIO_ACCOUNT_SID` | Twilio account SID | From Twilio console |
 | `TWILIO_AUTH_TOKEN` | Twilio auth token | From Twilio console |
 | `TWILIO_DEFAULT_NUMBER` | Fallback SMS sender number | E.164 format |
-| `JWT_SECRET_KEY` | Signs all JWT tokens | Generate: `openssl rand -hex 64` |
+| `JWT_SECRET` | Signs all JWT tokens | Generate: `openssl rand -hex 64` |
 | `JWT_ALGORITHM` | JWT signing algorithm | `HS256` |
 | `ADMIN_PASSWORD_HASH` | Bcrypt hash of admin password | See hashing instructions below |
 | `ADMIN_PHONE` | Admin phone for system alerts | E.164 format |
 | `SENDGRID_API_KEY` | SendGrid API key | From SendGrid dashboard |
-| `SENDGRID_FROM_EMAIL` | Verified sender email | e.g. `hello@fixmyday.ai` |
+| `SENDGRID_FROM_EMAIL` | Verified sender email | e.g. `noreply@fixmyday.ai` |
 | `ENVIRONMENT` | Deployment environment | `production` |
-| `FRONTEND_URL` | Frontend origin for CORS | `https://fixmyday.ai` |
+| `FRONTEND_URL` | Frontend base URL for magic links and CORS | `https://fixmyday.ai` |
+| `ADMIN_USERNAME` | Admin login username (optional override) | Default: `admin` |
 
 ### Generating ADMIN_PASSWORD_HASH
 
@@ -300,7 +301,7 @@ Optional: point `api.fixmyday.ai` → Railway backend for cleaner API URLs.
 
 Morning summary emails are plain text. No HTML template required in V1.
 Subject line format: `[Business Name] — Overnight Summary [Date]`
-From: `hello@fixmyday.ai` (or configured SENDGRID_FROM_EMAIL)
+From: `noreply@fixmyday.ai` (or configured SENDGRID_FROM_EMAIL)
 
 ---
 
@@ -312,7 +313,7 @@ From: `hello@fixmyday.ai` (or configured SENDGRID_FROM_EMAIL)
 - [ ] Railway PostgreSQL plugin added
 - [ ] `ADMIN_PASSWORD_HASH` generated and set
 - [ ] `VAPI_WEBHOOK_SECRET` generated and set in both Railway and Vapi dashboard
-- [ ] `JWT_SECRET_KEY` generated and set
+- [ ] `JWT_SECRET` generated and set
 
 ### Database Init
 
@@ -438,7 +439,7 @@ VAPI_WEBHOOK_SECRET=local_test_secret
 TWILIO_ACCOUNT_SID=test_sid
 TWILIO_AUTH_TOKEN=test_token
 TWILIO_DEFAULT_NUMBER=+15551234567
-JWT_SECRET_KEY=local_dev_secret_not_for_production
+JWT_SECRET=local_dev_secret_not_for_production
 JWT_ALGORITHM=HS256
 ADMIN_PASSWORD_HASH=[generate locally]
 ADMIN_PHONE=+15551234567
@@ -452,9 +453,9 @@ FRONTEND_URL=http://localhost:5173
 
 ## Security Notes
 
-- `JWT_SECRET_KEY` must be cryptographically random and never reused across environments
+- `JWT_SECRET` must be cryptographically random and never reused across environments
 - `VAPI_WEBHOOK_SECRET` must match exactly between Railway and Vapi dashboard
 - Never log JWT tokens, passwords, or API keys in Railway logs
 - `ADMIN_PASSWORD_HASH` — keep plaintext password in a password manager, not in any file
-- Rotate `JWT_SECRET_KEY` invalidates all active sessions — coordinate with any logged-in users
+- Rotate `JWT_SECRET` invalidates all active sessions — coordinate with any logged-in users
 - Railway environment variables are encrypted at rest — do not copy them to other storage

@@ -11,6 +11,7 @@ from ..schemas import (
     PortalLoginRequest,
     SetPasswordRequest,
     MagicLinkRequest,
+    ForgotPasswordRequest,
     TokenResponse,
 )
 from ..auth import (
@@ -113,7 +114,39 @@ async def set_portal_password(
         client_id=client_id,
         metadata={"client_id": str(client_id)},
     )
-    return {"access_token": portal_token, "token_type": "bearer"}
+    return {"access_token": portal_token, "token_type": "bearer", "client_id": str(client_id)}
+
+
+@router.post("/verify-setup-token")
+async def verify_setup_token(payload: dict, db: AsyncSession = Depends(get_db)):
+    """Verify a magic link token and return client_id + business_name without consuming it."""
+    token = payload.get("token", "")
+    try:
+        client_id = validate_magic_link_token(token)
+    except Exception:
+        raise HTTPException(status_code=401, detail="TOKEN_INVALID")
+    result = await db.execute(
+        select(Client.business_name).where(Client.id == client_id)
+    )
+    name = result.scalar_one_or_none()
+    return {"client_id": str(client_id), "business_name": name or "your business"}
+
+
+@router.get("/client-info/{client_id}")
+async def get_client_info(client_id: str, db: AsyncSession = Depends(get_db)):
+    """Public endpoint returning only business_name for a client. Used by login/setup pages."""
+    try:
+        import uuid
+        uuid.UUID(client_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="CLIENT_NOT_FOUND")
+    result = await db.execute(
+        select(Client.business_name).where(Client.id == client_id, Client.status == "active")
+    )
+    name = result.scalar_one_or_none()
+    if not name:
+        raise HTTPException(status_code=404, detail="CLIENT_NOT_FOUND")
+    return {"business_name": name}
 
 
 @router.post("/portal-magic-link")
@@ -132,7 +165,7 @@ async def send_magic_link(
         )
     token = create_magic_link_token(str(client.id))
     frontend_url = os.environ.get("FRONTEND_URL", "https://fixmyday.ai")
-    link = f"{frontend_url}/portal/setup?token={token}"
+    link = f"{frontend_url}/fixmynight/portal/setup?token={token}"
     await send_summary_email(
         to_email=client.contact_email,
         subject=f"{client.business_name} — Set Up Your FixMyNight Portal",
@@ -142,5 +175,48 @@ async def send_magic_link(
             f"This link expires in 24 hours.\n\n"
             f"— FixMyNight"
         ),
+    )
+    return {"status": "sent"}
+
+
+@router.post("/portal-forgot-password")
+@limiter.limit("3/15minutes")
+async def forgot_password(
+    request: Request,
+    payload: ForgotPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    # Always return success to avoid email enumeration
+    result = await db.execute(
+        select(Client).where(
+            Client.contact_email == payload.email,
+            Client.status == "active",
+        )
+    )
+    client = result.scalar_one_or_none()
+    if not client:
+        return {"status": "sent"}
+
+    token = create_magic_link_token(str(client.id))
+    frontend_url = os.environ.get("FRONTEND_URL", "https://fixmyday.ai")
+    link = f"{frontend_url}/fixmynight/portal/setup?token={token}&reset=true"
+    await send_summary_email(
+        to_email=client.contact_email,
+        subject=f"{client.business_name} — Reset Your FixMyNight Password",
+        body=(
+            f"Hi {client.owner_name or 'there'},\n\n"
+            f"We received a request to reset your FixMyNight portal password.\n\n"
+            f"Click below to set a new password:\n{link}\n\n"
+            f"This link expires in 24 hours. If you didn't request this, "
+            f"you can safely ignore this email.\n\n"
+            f"— FixMyNight"
+        ),
+    )
+    await write_audit_log(
+        db,
+        "auth.forgot_password",
+        "portal",
+        client_id=client.id,
+        metadata={"email": payload.email},
     )
     return {"status": "sent"}

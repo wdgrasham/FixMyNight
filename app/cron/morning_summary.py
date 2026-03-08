@@ -95,6 +95,9 @@ async def _maybe_send_morning_summary(client, db: AsyncSession):
     summary = _build_summary(client, calls, tz, tech_names)
 
     try:
+        delivery_methods = []
+
+        # Email delivery (primary)
         if client.contact_email:
             date_str = now.strftime("%B %d, %Y")
             await send_summary_email(
@@ -102,10 +105,23 @@ async def _maybe_send_morning_summary(client, db: AsyncSession):
                 subject=f"{client.business_name} — Overnight Summary {date_str}",
                 body=summary,
             )
-            delivery = "email"
-        else:
+            delivery_methods.append("email")
+
+        # SMS delivery to admin numbers (also send if admin_sms_numbers configured)
+        import json
+        numbers = client.admin_sms_numbers
+        if isinstance(numbers, str):
+            numbers = json.loads(numbers)
+        if numbers:
+            for number in numbers:
+                await send_sms(number, summary[:1600])
+            delivery_methods.append("sms")
+        elif not client.contact_email:
+            # Fallback: no email and no admin SMS numbers, send to owner phone
             await send_sms(client.owner_phone, summary[:1600])
-            delivery = "sms"
+            delivery_methods.append("sms")
+
+        delivery = "+".join(delivery_methods) if delivery_methods else "none"
 
         call_ids = [c.id for c in calls]
         if call_ids:
@@ -157,7 +173,8 @@ def _build_summary(client, calls, tz, tech_names=None) -> str:
     routines = [c for c in calls if c.call_type == "routine"]
     messages = [c for c in calls if c.call_type == "message"]
     wrong_numbers = [c for c in calls if c.call_type == "wrong_number"]
-    hangups = [c for c in calls if c.call_type in ("hangup", "unknown")]
+    hangups = [c for c in calls if c.call_type == "hangup"]
+    unprocessed = [c for c in calls if c.call_type == "unknown"]
     lines = [f"{client.business_name} — Overnight Summary\n"]
 
     if emergencies:
@@ -201,12 +218,14 @@ def _build_summary(client, calls, tz, tech_names=None) -> str:
                 lines.append("  No callback requested.")
         lines.append("")
 
-    # "Also received" line — only if there were wrong numbers or hangups
+    # "Also received" line — wrong numbers, hangups, unprocessed
     also_parts = []
     if wrong_numbers:
         also_parts.append(f"{len(wrong_numbers)} wrong number(s)")
     if hangups:
         also_parts.append(f"{len(hangups)} hangup(s)")
+    if unprocessed:
+        also_parts.append(f"{len(unprocessed)} unprocessed call(s)")
     if also_parts:
         lines.append(f"Also received: {', '.join(also_parts)}.")
         lines.append("")

@@ -1,6 +1,6 @@
 from sqlalchemy import (
     Column, String, Boolean, DECIMAL, ARRAY, Integer, Text, ForeignKey, Date,
-    DateTime, Time,
+    DateTime, Index, Time,
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import declarative_base
@@ -44,10 +44,18 @@ class Client(Base):
 
 class Technician(Base):
     __tablename__ = "technicians"
+    __table_args__ = (
+        Index(
+            "idx_one_on_call_per_client",
+            "client_id",
+            unique=True,
+            postgresql_where=Column("on_call") == True,
+        ),
+    )
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     created_at = Column(DateTime(timezone=True))
     updated_at = Column(DateTime(timezone=True))
-    client_id = Column(UUID(as_uuid=True), ForeignKey("clients.id"), nullable=False)
+    client_id = Column(UUID(as_uuid=True), ForeignKey("clients.id", ondelete="CASCADE"), nullable=False)
     name = Column(String, nullable=False)
     phone = Column(String, nullable=False)
     on_call = Column(Boolean, nullable=False, default=False)
@@ -76,8 +84,12 @@ class Call(Base):
     transfer_success = Column(Boolean)
     transferred_to_phone = Column(String)
     transferred_to_tech_id = Column(UUID(as_uuid=True), ForeignKey("technicians.id"))
-    vapi_call_id = Column(String, unique=True)
+    vapi_call_id = Column(String, index=True)
     idempotency_key = Column(String, unique=True)
+    call_started_at = Column(DateTime(timezone=True))
+    call_ended_at = Column(DateTime(timezone=True))
+    duration_seconds = Column(Integer)
+    recording_url = Column(String)
     morning_summary_sent_at = Column(DateTime(timezone=True))
     flagged_urgent = Column(Boolean, nullable=False, default=False)
     requires_callback = Column(Boolean, nullable=False, default=True)
@@ -88,7 +100,7 @@ class RoutingRule(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     created_at = Column(DateTime(timezone=True))
     updated_at = Column(DateTime(timezone=True))
-    client_id = Column(UUID(as_uuid=True), ForeignKey("clients.id"), unique=True, nullable=False)
+    client_id = Column(UUID(as_uuid=True), ForeignKey("clients.id", ondelete="CASCADE"), unique=True, nullable=False)
     after_hours_start = Column(Time, nullable=False)
     after_hours_end = Column(Time, nullable=False)
     last_oncall_reminder_date = Column(Date)

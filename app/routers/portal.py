@@ -16,6 +16,9 @@ from ..schemas import (
     CallResponse,
     CallsListResponse,
     DashboardResponse,
+    OnCallTechSummary,
+    SettingsSummary,
+    Stats7d,
 )
 from ..utils.audit import write_audit_log
 from ..services.vapi import rebuild_vapi_assistant
@@ -74,6 +77,8 @@ async def dashboard(
     client: Client = Depends(require_portal),
     db: AsyncSession = Depends(get_db),
 ):
+    from datetime import date, timedelta
+
     # On-call tech
     tech_result = await db.execute(
         select(Technician).where(
@@ -83,6 +88,10 @@ async def dashboard(
         )
     )
     on_call_tech = tech_result.scalar_one_or_none()
+    on_call_summary = None
+    if on_call_tech:
+        since_str = on_call_tech.on_call_start.isoformat() if on_call_tech.on_call_start else None
+        on_call_summary = OnCallTechSummary(name=on_call_tech.name, since=since_str)
 
     # Recent calls
     calls_result = await db.execute(
@@ -93,29 +102,51 @@ async def dashboard(
     )
     recent_calls = calls_result.scalars().all()
 
-    # Total calls today
-    from datetime import date
-    import pytz
-
-    tz = pytz.timezone(client.timezone)
-    today_start = tz.localize(datetime.combine(date.today(), dt_time.min))
-    count_result = await db.execute(
-        select(func.count())
+    # 7-day stats
+    seven_days_ago = datetime.utcnow() - timedelta(days=7)
+    stats_result = await db.execute(
+        select(
+            func.count().label("total"),
+            func.count().filter(Call.call_type == "emergency").label("emergencies"),
+            func.count().filter(Call.transfer_success == True).label("transfers"),
+            func.count().filter(Call.transfer_attempted == True).label("transfer_attempts"),
+        )
         .select_from(Call)
-        .where(Call.client_id == client_id, Call.created_at >= today_start)
+        .where(Call.client_id == client_id, Call.created_at >= seven_days_ago)
     )
-    total_today = count_result.scalar()
+    row = stats_result.one()
+    total_calls = row.total or 0
+    emergencies = row.emergencies or 0
+    transfers_completed = row.transfers or 0
+    transfer_attempts = row.transfer_attempts or 0
+    transfer_success_rate = (
+        (transfers_completed / transfer_attempts * 100) if transfer_attempts > 0 else 0.0
+    )
+
+    # Settings summary
+    def _time_str(t):
+        return t.strftime("%H:%M") if t else None
+
+    settings_summary = SettingsSummary(
+        summary_send_time=_time_str(client.summary_send_time),
+        callback_expected_time=_time_str(client.callback_expected_time),
+        emergency_enabled=client.emergency_enabled,
+        emergency_fee=client.emergency_fee,
+        sleep_window_start=_time_str(client.sleep_window_start),
+        sleep_window_end=_time_str(client.sleep_window_end),
+    )
 
     return DashboardResponse(
-        business_name=client.business_name,
-        on_call_tech=(
-            TechnicianResponse.model_validate(on_call_tech)
-            if on_call_tech
-            else None
-        ),
+        on_call_tech=on_call_summary,
+        twilio_number=client.twilio_number,
         recent_calls=[CallResponse.model_validate(c) for c in recent_calls],
-        total_calls_today=total_today,
-        emergency_enabled=client.emergency_enabled,
+        settings_summary=settings_summary,
+        stats_7d=Stats7d(
+            total_calls=total_calls,
+            emergencies=emergencies,
+            transfers_completed=transfers_completed,
+            transfer_success_rate=round(transfer_success_rate, 1),
+        ),
     )
 
 
@@ -128,6 +159,7 @@ async def get_calls(
     offset: int = Query(0, ge=0),
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
+    call_type: Optional[str] = None,
 ):
     query = select(Call).where(Call.client_id == client_id)
     count_query = (
@@ -135,11 +167,17 @@ async def get_calls(
     )
 
     if date_from:
-        query = query.where(Call.created_at >= date_from)
-        count_query = count_query.where(Call.created_at >= date_from)
+        from_dt = datetime.strptime(date_from, "%Y-%m-%d")
+        query = query.where(Call.created_at >= from_dt)
+        count_query = count_query.where(Call.created_at >= from_dt)
     if date_to:
-        query = query.where(Call.created_at <= date_to)
-        count_query = count_query.where(Call.created_at <= date_to)
+        # End-of-day so calls on date_to are included
+        to_dt = datetime.strptime(date_to, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
+        query = query.where(Call.created_at <= to_dt)
+        count_query = count_query.where(Call.created_at <= to_dt)
+    if call_type:
+        query = query.where(Call.call_type == call_type)
+        count_query = count_query.where(Call.call_type == call_type)
 
     total_result = await db.execute(count_query)
     total = total_result.scalar()
@@ -371,7 +409,7 @@ async def delete_technician(
     await write_audit_log(
         db,
         "tech.deactivated",
-        "admin",
+        "portal",
         resource_type="technician",
         resource_id=tech.id,
         client_id=tech.client_id,

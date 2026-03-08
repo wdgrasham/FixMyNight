@@ -213,7 +213,7 @@ from jose import JWTError, ExpiredSignatureError, jwt
 from passlib.context import CryptContext
 import os
 
-SECRET_KEY = os.environ["JWT_SECRET_KEY"]
+SECRET_KEY = os.environ["JWT_SECRET"]
 ALGORITHM = os.environ.get("JWT_ALGORITHM", "HS256")
 ADMIN_TOKEN_EXPIRE_HOURS = 8
 PORTAL_TOKEN_EXPIRE_HOURS = 24
@@ -416,7 +416,8 @@ async def send_magic_link(payload: MagicLinkRequest, admin=Depends(require_admin
     if not client or not client.contact_email:
         raise HTTPException(status_code=404, detail="CLIENT_NOT_FOUND_OR_NO_EMAIL")
     token = create_magic_link_token(str(client.id))
-    link = f"https://fixmyday.ai/portal/setup?token={token}"
+    frontend_url = os.environ["FRONTEND_URL"]
+    link = f"{frontend_url}/fixmynight/portal/setup?token={token}"
     await send_summary_email(
         to_email=client.contact_email,
         subject=f"{client.business_name} — Set Up Your FixMyNight Portal",
@@ -456,6 +457,8 @@ Request body:
   "sleep_window_end": "08:00",
   "summary_send_time": "07:30",
   "callback_expected_time": "09:00",
+  "industry": "hvac",
+  "agent_name": "Sarah",
   "technicians": [{"name": "string", "phone": "+15551234567"}]
 }
 ```

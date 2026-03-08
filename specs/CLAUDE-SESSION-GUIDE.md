@@ -147,7 +147,7 @@ Complete each phase fully before starting the next.
 <!-- UPDATE THIS SECTION AT THE END OF EVERY SESSION -->
 <!-- Be specific — what files exist, what endpoints work, what's been tested -->
 
-**Last updated:** 2026-03-03
+**Last updated:** 2026-03-04
 
 **Pre-Phase: Spec Audit:** [X] Complete
 Notes: V1.5 cross-document audit completed (49 issues). V1.6 changes applied:
@@ -161,22 +161,32 @@ created with UUID PKs, correct indexes, partial unique constraint. 19/19
 validation queries pass. Stellar HVAC seed data inserted with confirmed values.
 Client ID: 49855f38-6fa3-4202-ab19-a242028ec369.
 
-**Phase 2 — Backend:** [ ] Not started / [X] In progress / [ ] Complete
-Notes: Railway env var cleanup logged (ADMIN_PASSWORD→ADMIN_PASSWORD_HASH,
-TWILIO_VOICE_NUMBER→TWILIO_DEFAULT_NUMBER, 7 missing vars identified).
-See DECISIONS-AND-CHANGES.md for full list.
+**Phase 2 — Backend:** [X] Complete
+Notes: 25 backend files across 7 milestones. FastAPI app with auth, 5 routers
+(auth, admin, portal, webhooks, sms), 6 services, 2 cron jobs, rate limiting.
+Deployed to Railway at https://fixmynight-api-production.up.railway.app.
+Health returns 200, admin login works, Stellar HVAC returned from API.
+Deployment fixes: Python 3.11 pin, DATABASE_URL conversion, SQLAlchemy imports,
+AuditLog.metadata reserved name, bcrypt compatibility. All env vars set.
 
-**Phase 3 — Vapi:** [ ] Not started / [ ] In progress / [ ] Complete
-Notes:
+**Phase 3 — Vapi:** [X] Complete
+Notes: V1.6 evening-window prompt pushed to assistant ecf217ee-e72a-4d75-b40b-c20efd10a38f.
+22/22 verification checks passed. Tools (transferCall, logCall) inside model.tools.
+Server URL set to Railway webhook endpoint. Webhook secret configured (X-Vapi-Secret).
+Stellar HVAC DB record updated with vapi_assistant_id. See DECISIONS-AND-CHANGES.md
+for full deployment log.
 
-**Phase 4 — Frontend:** [ ] Not started / [ ] In progress / [ ] Complete
-Notes:
+**Phase 4 — Frontend:** [X] Complete
+Notes: Admin portal and client portal built and deployed to Vercel at fixmyday.ai/fixmynight/.
+Admin login, client list, onboarding form, client detail, portal login, dashboard, calls,
+settings, and team pages all implemented. Wired to Railway backend API.
 
-**Phase 5 — Wire & Test:** [ ] Not started / [ ] In progress / [ ] Complete
+**Phase 5 — Wire & Test:** [ ] Not started
 Notes:
 
 **Decisions made this session that aren't in the spec:**
-None — all changes were corrections to align existing spec documents with each other.
+Branding and public marketing site deferred — placeholder styling in Phase 4.
+See DECISIONS-AND-CHANGES.md "Branding and Marketing Site — Out of Scope" entry.
 
 ---
 
@@ -215,12 +225,13 @@ Required before backend will run:
 - `TWILIO_ACCOUNT_SID`
 - `TWILIO_AUTH_TOKEN`
 - `TWILIO_DEFAULT_NUMBER`
-- `JWT_SECRET_KEY`
+- `JWT_SECRET`
 - `JWT_ALGORITHM` = `HS256`
 - `ADMIN_PASSWORD_HASH`
 - `ADMIN_PHONE`
 - `SENDGRID_API_KEY`
 - `SENDGRID_FROM_EMAIL`
+- `FRONTEND_URL`
 - `ENVIRONMENT` = `production`
 
 If any of these are missing, ask the user to set them in Railway before proceeding.
@@ -262,10 +273,10 @@ For everything else: proceed autonomously, following the spec.
 
 The system is complete when:
 
-1. Admin logs into fixmyday.ai/admin with password
+1. Admin logs into fixmyday.ai/fixmynight/admin with password
 2. Admin sees Stellar HVAC in client list
 3. Admin sends portal magic link to Dan's email
-4. Dan clicks link, sets password, logs into fixmyday.ai/portal/{id}
+4. Dan clicks link, sets password, logs into fixmyday.ai/fixmynight/portal/{id}
 5. Dan sees his dashboard: on-call status, recent calls, settings
 6. Dan's tech texts ON to the Twilio number — on-call status updates in portal
 7. Caller dials Stellar HVAC Twilio number after hours

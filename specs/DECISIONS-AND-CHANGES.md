@@ -21,7 +21,7 @@ Before starting Phase 2 (Backend), a review of the existing Railway environment 
 | Variable | Purpose | Notes |
 |----------|---------|-------|
 | `VAPI_WEBHOOK_SECRET` | Authenticates incoming Vapi webhook requests | Get from Vapi dashboard |
-| `JWT_SECRET_KEY` | Signs all JWT tokens (admin + portal) | Generate with `openssl rand -hex 64` |
+| `JWT_SECRET` | Signs all JWT tokens (admin + portal) | Generate with `openssl rand -hex 64` |
 | `JWT_ALGORITHM` | JWT signing algorithm | Set to `HS256` |
 | `ADMIN_PHONE` | Admin's phone for fallback SMS alerts | `+13466911035` (Dan's number for now) |
 | `SENDGRID_API_KEY` | Morning summary email delivery | Get from SendGrid dashboard |
@@ -396,7 +396,7 @@ These items were discussed and explicitly deferred:
 
 > **NOTE:** The variable names below are from the V1.4→V1.5 migration notes and some are outdated.
 > The authoritative environment variable list is in DEPLOYMENT-SPEC.md.
-> Specifically: `JWT_SECRET` is now `JWT_SECRET_KEY`, and `ADMIN_USERNAME` / `AUDIT_LOG_ENABLED` are no longer used.
+> Specifically: the actual deployed name is `JWT_SECRET` (not `JWT_SECRET_KEY`), and `ADMIN_USERNAME` / `AUDIT_LOG_ENABLED` are no longer used.
 
 ```bash
 JWT_SECRET_KEY=<openssl rand -hex 64>
@@ -473,4 +473,209 @@ When documents disagreed, the fix was always applied to the document that was ou
 
 ---
 
-*This document is the authoritative record of all V1.5 and V1.6 decisions. Any implementation that contradicts this document contains an error. Last updated: 2026-03-02.*
+---
+
+## Phase 3 Deployment: Railway + Vapi Setup (2026-03-04)
+
+Backend deployed to Railway and all infrastructure wiring completed in a single session.
+
+### Deployment Fixes Applied
+
+| # | Issue | Fix |
+|---|-------|-----|
+| 1 | Railway uses Python 3.13 by default; `asyncpg` and `pydantic-core` lack pre-built wheels | Added `runtime.txt` pinning Python 3.11.11 |
+| 2 | `DATABASE_URL` starts with `postgresql://` not `postgres://`; URL conversion missed it | Fixed `database.py` to handle both `postgresql://` and `postgres://` prefixes |
+| 3 | `TIMESTAMPTZ` and `TIME` not importable from `sqlalchemy.dialects.postgresql` | Replaced with `DateTime(timezone=True)` and `Time` from core SQLAlchemy |
+| 4 | `AuditLog.metadata` conflicts with SQLAlchemy's reserved `metadata` attribute | Renamed Python attribute to `.meta` with `Column("metadata", ...)` to keep DB column name |
+| 5 | Code used `JWT_SECRET_KEY` but env var is `JWT_SECRET` | Fixed `auth.py` to use `JWT_SECRET` |
+| 6 | `passlib==1.7.4` + `bcrypt>=4.1` incompatible (ValueError on >72 byte detection) | Pinned `bcrypt==4.0.1` in `requirements.txt` |
+| 7 | Vapi API rejects `tools` at top level of assistant payload | Moved `tools` inside `model.tools` in push script, vapi.py, and payload JSON |
+
+### Railway Environment Variables — Final State
+
+| Variable | Value/Source | Status |
+|----------|-------------|--------|
+| `DATABASE_URL` | Railway Postgres internal URL | Pre-existing |
+| `VAPI_API_KEY` | From Vapi dashboard | Pre-existing |
+| `TWILIO_ACCOUNT_SID` | From Twilio dashboard | Pre-existing |
+| `TWILIO_AUTH_TOKEN` | From Twilio dashboard | Pre-existing |
+| `TWILIO_DEFAULT_NUMBER` | `+19798525799` | Renamed from `TWILIO_VOICE_NUMBER` |
+| `ADMIN_PASSWORD_HASH` | bcrypt hash of `FixMyNight2024!` | Replaced plaintext `ADMIN_PASSWORD` |
+| `ADMIN_USERNAME` | `wdgrasham` | Added |
+| `JWT_SECRET` | Generated (64-byte URL-safe token) | Added |
+| `VAPI_WEBHOOK_SECRET` | Generated (32-byte URL-safe token) | Added |
+| `SENDGRID_API_KEY` | From SendGrid dashboard | Added |
+| `SENDGRID_FROM_EMAIL` | `noreply@fixmyday.ai` | Added |
+| `FRONTEND_URL` | `https://fixmyday.ai` | Added |
+| `ENVIRONMENT` | `production` | Pre-existing |
+| `ADMIN_PASSWORD` | — | **Removed** (was plaintext) |
+| `TWILIO_VOICE_NUMBER` | — | **Removed** (renamed) |
+
+### Vapi Assistant Configuration
+
+| Setting | Value |
+|---------|-------|
+| Assistant ID | `ecf217ee-e72a-4d75-b40b-c20efd10a38f` |
+| Server URL | `https://fixmynight-api-production.up.railway.app/api/v1/webhooks/vapi-intake` |
+| Webhook header | `X-Vapi-Secret` |
+| Prompt version | V1.6 evening-window (5,906 chars) |
+| Tools | `transferCall`, `logCall` (inside `model.tools`) |
+| Model | GPT-4o, temperature 0.3 |
+| Voice | ElevenLabs (`sarah`) |
+| Transcriber | Deepgram Nova-2 |
+| Verification | 22/22 checks passed |
+
+### Stellar HVAC DB Record
+
+`vapi_assistant_id` updated to `ecf217ee-e72a-4d75-b40b-c20efd10a38f` via admin API PATCH.
+
+### Decision: `ADMIN_USERNAME` vs spec note
+
+The V1.4→V1.5 migration notes in this document state `ADMIN_USERNAME — removed (admin is a single superuser, no username needed)`. However, `BACKEND-SPEC.md` defines admin login as password-only (no username field in the request schema). The `ADMIN_USERNAME` env var is set but not currently checked by the login endpoint — it exists for future use if username validation is added. The login endpoint validates password only via `ADMIN_PASSWORD_HASH`.
+
+---
+
+---
+
+## Branding and Marketing Site — Out of Scope (2026-03-04)
+
+**Decision:** Branding and the public marketing website (fixmyday.ai landing page, logo, color palette, pricing page) are NOT in scope for the current build. Phase 4 frontend will use a simple text logo and basic color scheme as placeholders. Branding and the public marketing site will be a separate project after Phases 4 and 5 are complete and the product is proven with Stellar HVAC.
+
+**Rationale:** The priority is a working product for the first client. Visual polish and marketing can't be validated until the core product works end-to-end. Placeholder branding avoids blocking frontend development on design decisions.
+
+**Impact:** No spec files affected. Frontend uses minimal placeholder styling.
+
+---
+
+## Phase 4 Frontend Deployed to Vercel (2026-03-04)
+
+Frontend deployed to Vercel with placeholder styling for Phase 5 end-to-end testing.
+
+**Production URL:** `https://frontend-one-iota-ko43cah616.vercel.app`
+**Vercel env var:** `VITE_API_BASE_URL` = `https://fixmynight-api-production.up.railway.app`
+
+---
+
+## Client Portal Redesign — After Phase 5 (2026-03-04)
+
+**Decision:** After Phase 5 testing is complete, the client portal will be redesigned with a professional look before taking on new clients beyond Stellar HVAC. The current placeholder styling (text logo, basic gray/blue Tailwind) is functional for testing but not client-ready.
+
+**Rationale:** The priority is proving the core product works end-to-end with Stellar HVAC. Visual polish is wasted effort until the functionality is validated. Once Phase 5 confirms everything works, the portal gets a proper design pass before onboarding additional clients.
+
+**Impact:** No spec or code changes now. Phase 5 testing proceeds with current styling. Design work is a separate effort after Phase 5 sign-off.
+
+---
+
+## Self-Service Client Onboarding — Future Feature (2026-03-04)
+
+**Decision:** Self-service client onboarding (public sign-up page, Stripe payment integration, automated provisioning without admin intervention) is planned as a future feature after the core product is proven with Stellar HVAC.
+
+**Rationale:** V1 is an admin-onboarded system by design. The admin manually creates clients, provisions Twilio numbers, and sends portal magic links. This is appropriate for early-stage validation with a single client. Self-service onboarding introduces significant complexity (payment processing, automated provisioning error handling, abuse prevention, pricing tiers) that is not justified until product-market fit is confirmed. Building it now would delay launch for a feature that may need to be redesigned based on learnings from the first client.
+
+**Impact:** No spec or code changes now. The current admin onboarding flow (`POST /api/v1/admin/clients`) remains the sole client creation path. Self-service onboarding will be scoped as its own project when the time comes.
+
+---
+
+## URL Restructure: FixMyDay Brand + FixMyNight Product Routes (2026-03-04)
+
+**Decision:** All FixMyNight application routes move under the `/fixmynight/` prefix. Public brand pages (`/`, `/legal`, `/privacy`, `/terms`, `/fixmynight`) are added at the root level. The catch-all redirect changes from `/admin` to `/`.
+
+**Rationale:** fixmyday.ai is the parent brand with multiple potential tools. FixMyNight is one product under the brand umbrella. The URL structure needs to reflect this hierarchy so that the root domain serves the FixMyDay.ai brand landing page, each product lives under its own prefix (`/fixmynight/...`), and future products can be added under their own prefixes without conflicts.
+
+**Route changes:**
+- `/admin/*` → `/fixmynight/admin/*`
+- `/portal/*` → `/fixmynight/portal/*`
+- `*` catch-all → redirects to `/` (landing) instead of `/admin`
+- New public routes: `/`, `/legal`, `/privacy`, `/terms`, `/fixmynight`
+
+**Implementation details:**
+- Route constants centralized in `frontend/src/routes.ts` to avoid scattered hardcoded paths
+- New `PublicLayout.tsx` component for marketing pages (separate from app Layout)
+- Backend magic link URL updated to include `/fixmynight/` prefix
+- Landing page content ported from root `index.html` into React + Tailwind
+- No API endpoint changes (all backend routes remain under `/api/v1/`)
+
+**Impact:** Frontend route restructure + one backend line change (magic link URL). No database, Vapi, or API changes.
+
+Note: Other spec files (FRONTEND-SPEC, BACKEND-SPEC, MASTER-SPEC, QA-AND-LAUNCH, CLAUDE-SESSION-GUIDE, DEPLOYMENT-SPEC) were updated to reflect the /fixmynight/ prefix on 2026-03-04.
+
+---
+
+### Decision: Technician Auto-Verification on First SMS Command
+
+**Date:** 2026-03-04
+**Context:** The spec says `phone_verified` should be set to TRUE after successful delivery of the verification SMS at onboarding time. However, successful Twilio delivery does not confirm the human received the message — only that the carrier accepted it.
+
+**Decision:** Technicians auto-verify on their first valid SMS command (ON, OFF, or STATUS). When an unverified tech sends a recognized command, the SMS handler sets `phone_verified=True` and `verified_at=now()` before processing the command. This provides stronger proof of phone ownership than delivery receipts.
+
+**Implementation:**
+- `app/routers/sms.py`: Queries include unverified techs. If `phone_verified == False` and the command is valid, sets `phone_verified=True` before processing.
+- Onboarding, admin add-tech, and portal add-tech endpoints send a verification SMS but do NOT set `phone_verified=True` on send.
+- The verification SMS text tells the tech to reply ON to go on-call, which triggers auto-verification.
+
+**Impact:** No functional difference for the end user. Tech receives verification SMS → replies ON → gets verified + goes on-call in a single action. Spec should be updated to reflect this behavior.
+
+---
+
+### Decision: Morning Summary Dual Delivery (Email + SMS)
+
+**Date:** 2026-03-04
+**Context:** Spec says morning summary can be delivered via email, SMS, or both. Original implementation used either/or (if/else).
+
+**Decision:** Morning summary now sends email to `contact_email` (if set) AND SMS to all `admin_sms_numbers` (if configured). If neither is available, falls back to owner_phone via SMS. Delivery field logs `"email+sms"` when both are used.
+
+---
+
+### Decision: Contact Email
+
+**Date:** 2026-03-04
+**Context:** Public legal/privacy/terms pages need a contact email for A2P 10DLC compliance.
+
+**Decision:** Public-facing contact email is `fixmyday@use.startmail.com`. SendGrid transactional email remains `noreply@fixmyday.ai`.
+
+---
+
+### Decision: Per-Day Business Hours (Deferred)
+
+**Date:** 2026-03-05
+**Context:** The current system uses a single `business_hours_start`/`business_hours_end` pair for all business days. Some clients have different hours on different days (e.g. Monday 8AM–6PM, Saturday 8AM–12PM, Sunday closed).
+
+**Decision:** Deferred until after Phase 5 launch. Current single-time approach works for v1.0 clients. A future update should support per-day hours. This requires changes to: database schema (`business_hours_start`/`business_hours_end` becomes a JSONB object keyed by day), `time_window.py` logic, `prompt_builder.py`, frontend forms (`ClientNew`, `ClientDetail`, `PortalSettings`), and `VAPI-PROMPT-SPEC`. Workaround: clients can set `business_days` to exclude Saturday if their Saturday hours are significantly different.
+
+---
+
+### Decision: Admin Operations Dashboard (Deferred)
+
+**Date:** 2026-03-05
+**Context:** The system relies on multiple third-party services (Twilio, Railway, Vercel, Vapi, SendGrid), each with usage limits and billing. Hitting a limit unexpectedly could cause service disruptions.
+
+**Decision:** After launch, build an admin operations panel that monitors third-party service usage and billing across all providers:
+
+- **Twilio:** SMS segment count, voice minutes used, current balance, numbers provisioned
+- **Railway:** CPU/memory usage, database size, bandwidth
+- **Vercel:** bandwidth, build minutes, deployment count
+- **Vapi:** minutes used, assistant count
+- **SendGrid:** emails sent, daily limit remaining
+
+Each service should show: current usage, plan limits, percentage used, and a warning threshold (e.g. alert at 80% of limit). This prevents service disruptions from hitting limits unexpectedly. Could pull from each provider's API.
+
+**Priority:** Post-launch, after 5+ active clients. For now, manually monitor dashboards.
+
+---
+
+### Decision: Persistent Auth for PWA (Deferred to V2)
+
+**Date:** 2026-03-06
+**Context:** The FixMyNight client portal is installable as a PWA. Currently, auth tokens are stored in Zustand (memory-only). When a client opens the PWA from their home screen, they must log in every time because the token is lost when the app is closed or the browser tab is recycled.
+
+**Decision:** Deferred. V1 uses memory-only auth. V2 should implement persistent auth — storing the JWT in `localStorage`, a secure cookie, or encrypted storage — so clients stay logged in across app launches. The current re-login-every-time behavior is acceptable for launch but will hurt adoption if not addressed.
+
+**Considerations for V2 implementation:**
+- `localStorage` is simplest but tokens are accessible to XSS. Acceptable if the portal has no user-generated content injection vectors.
+- `httpOnly` cookie set by the backend is more secure but requires CORS/cookie configuration changes.
+- Token refresh (silent re-auth before expiry) should be added alongside persistent storage.
+- Current JWT expiry is 24 hours. With persistent storage, this becomes the maximum session duration.
+
+---
+
+*This document is the authoritative record of all V1.5 and V1.6 decisions. Any implementation that contradicts this document contains an error. Last updated: 2026-03-06.*

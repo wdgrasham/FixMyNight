@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SMS Messaging Program — FixMyNight by FixMyDay.ai</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --navy: #0F172A;
+    --navy-light: #1E293B;
+    --navy-mid: #334155;
+    --amber: #F59E0B;
+    --amber-light: #FCD34D;
+    --amber-glow: rgba(245, 158, 11, 0.12);
+    --text-primary: #F1F5F9;
+    --text-secondary: #94A3B8;
+    --text-muted: #64748B;
+    --surface: #1E293B;
+    --border: rgba(148, 163, 184, 0.12);
+    --white: #ffffff;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', -apple-system, sans-serif;
+    background: var(--navy);
+    color: var(--text-primary);
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* -- Header Bar -- */
+  .top-bar {
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 1rem 2rem;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .top-bar-inner {
+    max-width: 900px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .logo-text {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.25rem;
+    color: var(--amber);
+    text-decoration: none;
+  }
+  .logo-text span { color: var(--text-primary); }
+  .nav-links a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin-left: 1.5rem;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--amber); }
+
+  /* -- Hero -- */
+  .hero {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 3.5rem 2rem 2rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .badge {
+    display: inline-block;
+    background: var(--amber-glow);
+    color: var(--amber);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 0.35rem 0.85rem;
+    border-radius: 999px;
+    border: 1px solid rgba(245, 158, 11, 0.25);
+    margin-bottom: 1rem;
+  }
+  .hero h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 2.25rem;
+    font-weight: 400;
+    line-height: 1.25;
+    margin-bottom: 0.75rem;
+    color: var(--white);
+  }
+  .hero .subtitle {
+    color: var(--text-secondary);
+    font-size: 1.05rem;
+    max-width: 620px;
+    line-height: 1.65;
+  }
+
+  /* -- Main Content -- */
+  .content {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 2rem 4rem;
+  }
+
+  /* -- Section -- */
+  .section {
+    padding: 2.5rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .section:last-child { border-bottom: none; }
+
+  .section-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--amber);
+    margin-bottom: 0.75rem;
+  }
+  .section h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.5rem;
+    font-weight: 400;
+    color: var(--white);
+    margin-bottom: 1rem;
+  }
+  .section p {
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+    font-size: 0.95rem;
+  }
+
+  /* -- Info Card -- */
+  .info-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.75rem;
+    margin: 1.25rem 0;
+  }
+  .info-card h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--white);
+    margin-bottom: 0.5rem;
+  }
+  .info-card p, .info-card li {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.7;
+  }
+
+  /* -- Program Details Grid -- */
+  .detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin: 1.25rem 0;
+  }
+  @media (max-width: 600px) {
+    .detail-grid { grid-template-columns: 1fr; }
+  }
+  .detail-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem;
+  }
+  .detail-item .label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-bottom: 0.35rem;
+    font-weight: 600;
+  }
+  .detail-item .value {
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    font-weight: 500;
+  }
+
+  /* -- Opt-in Steps -- */
+  .step {
+    display: flex;
+    gap: 1.25rem;
+    margin: 1.5rem 0;
+    align-items: flex-start;
+  }
+  .step-num {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    background: var(--amber-glow);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--amber);
+    margin-top: 2px;
+  }
+  .step-content h4 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--white);
+    margin-bottom: 0.3rem;
+  }
+  .step-content p {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 0;
+  }
+
+  /* -- Screenshot -- */
+  .screenshot-wrap {
+    margin: 1.75rem 0;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    background: var(--white);
+  }
+  .screenshot-wrap img {
+    width: 100%;
+    display: block;
+  }
+  .screenshot-caption {
+    background: var(--surface);
+    padding: 0.85rem 1.25rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border);
+    font-style: italic;
+  }
+
+  /* -- SMS Samples -- */
+  .sms-bubble-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin: 1.25rem 0;
+  }
+  .sms-bubble {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem;
+    max-width: 480px;
+  }
+  .sms-bubble .sms-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--amber);
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+  .sms-bubble .sms-text {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.88rem;
+    color: var(--text-primary);
+    line-height: 1.6;
+    background: rgba(148, 163, 184, 0.08);
+    border-radius: 8px;
+    padding: 0.85rem 1rem;
+  }
+
+  /* -- Keyword Table -- */
+  .keyword-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    font-size: 0.9rem;
+  }
+  .keyword-table th {
+    text-align: left;
+    padding: 0.75rem 1rem;
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+    border-bottom: 1px solid var(--border);
+  }
+  .keyword-table td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-secondary);
+  }
+  .keyword-table td:first-child {
+    color: var(--amber);
+    font-weight: 600;
+    font-family: 'DM Sans', monospace;
+  }
+
+  /* -- Footer Links -- */
+  .footer-links {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    margin: 1rem 0;
+  }
+  .footer-links a {
+    color: var(--amber);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s;
+  }
+  .footer-links a:hover {
+    border-bottom-color: var(--amber);
+  }
+
+  .footer-bar {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+  }
+  .footer-bar a {
+    color: var(--text-secondary);
+    text-decoration: none;
+  }
+</style>
+</head>
+<body>
+
+<!-- Top Bar -->
+<div class="top-bar">
+  <div class="top-bar-inner">
+    <a href="https://fixmyday.ai" class="logo-text">FixMy<span>Day</span>.ai</a>
+    <nav class="nav-links">
+      <a href="https://fixmyday.ai/fixmynight">FixMyNight</a>
+      <a href="https://fixmyday.ai/terms">Terms</a>
+      <a href="https://fixmyday.ai/privacy">Privacy</a>
+    </nav>
+  </div>
+</div>
+
+<!-- Hero -->
+<div class="hero">
+  <div class="badge">SMS Program</div>
+  <h1>SMS/Text Messaging Program</h1>
+  <p class="subtitle">Complete information about the FixMyNight SMS messaging program, including how consent is collected, what messages are sent, and how to opt out.</p>
+</div>
+
+<div class="content">
+
+  <!-- Section 1: Program Details -->
+  <div class="section">
+    <div class="section-label">Program Details</div>
+    <h2>FixMyNight SMS Program</h2>
+    <p>FixMyNight is an after-hours answering service for service contractors, operated by FixMyDay.ai (Grasham Farm LLC). The SMS program supports on-call technician management and business owner notifications.</p>
+
+    <div class="detail-grid">
+      <div class="detail-item">
+        <div class="label">Brand</div>
+        <div class="value">FixMyDay.ai (Grasham Farm LLC)</div>
+      </div>
+      <div class="detail-item">
+        <div class="label">Program Name</div>
+        <div class="value">FixMyNight After-Hours Answering Service</div>
+      </div>
+      <div class="detail-item">
+        <div class="label">Phone Number Type</div>
+        <div class="value">10-digit long code (10DLC)</div>
+      </div>
+      <div class="detail-item">
+        <div class="label">Message Frequency</div>
+        <div class="value">Varies based on call volume and service activity</div>
+      </div>
+    </div>
+
+    <div class="info-card">
+      <h3>Message Types</h3>
+      <p>The FixMyNight SMS program sends the following types of messages:</p>
+      <p><strong style="color:var(--text-primary)">Technician verification</strong> — initial verification message when a technician is added to the system.</p>
+      <p><strong style="color:var(--text-primary)">On-call management</strong> — responses to ON, OFF, and STATUS keyword commands.</p>
+      <p><strong style="color:var(--text-primary)">Emergency dispatch alerts</strong> — notifications when an emergency caller needs to be connected to the on-call technician.</p>
+      <p><strong style="color:var(--text-primary)">On-call status changes</strong> — notifications when another technician takes over on-call duty.</p>
+      <p><strong style="color:var(--text-primary)">Morning summary notifications</strong> — daily summary of overnight call activity sent to business administrators.</p>
+      <p style="margin-bottom:0"><strong style="color:var(--text-primary)">Service notifications</strong> — important updates about the FixMyNight service.</p>
+    </div>
+  </div>
+
+  <!-- Section 2: How Consent Works -->
+  <div class="section">
+    <div class="section-label">Consent &amp; Opt-In</div>
+    <h2>How Users Consent to Receive Messages</h2>
+    <p>FixMyNight collects SMS consent through two methods, depending on the user type. Both methods are initiated through the FixMyNight admin portal, which is a login-protected business management dashboard.</p>
+
+    <div class="info-card" style="border-left: 3px solid var(--amber);">
+      <h3>Opt-In Method 1: Technicians</h3>
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h4>Administrator adds technician</h4>
+          <p>An authorized business administrator adds the technician's name and mobile phone number through the FixMyNight admin portal at <strong style="color:var(--text-primary)">fixmyday.ai/fixmynight/admin</strong> (login required).</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h4>Verification SMS is sent</h4>
+          <p>The system automatically sends a one-time verification SMS to the technician's mobile number, introducing the service and providing opt-out instructions.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h4>Technician opts in via keyword</h4>
+          <p>The technician explicitly opts in to on-call notifications by texting the keyword <strong style="color:var(--amber)">ON</strong> to the business's dedicated FixMyNight phone number. No further messages are sent until the technician texts ON.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Admin Portal Screenshot -->
+    <div class="screenshot-wrap">
+      <img src="admin-technician-screenshot.png" alt="FixMyNight admin portal — Technician management interface showing the Add Technician form and technician list with verification status" />
+      <div class="screenshot-caption">FixMyNight admin portal — Technician management screen. Administrators add technicians by name and phone number. The system tracks verification and on-call status for each technician.</div>
+    </div>
+
+    <div class="info-card" style="border-left: 3px solid var(--amber);">
+      <h3>Opt-In Method 2: Business Owners</h3>
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h4>Account setup</h4>
+          <p>Business owners provide their mobile number and consent to receive service alerts (emergency fallback notifications and morning call summaries) during account setup on the admin portal at <strong style="color:var(--text-primary)">fixmyday.ai/fixmynight/admin</strong> (login required).</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h4>Consent acknowledged</h4>
+          <p>By providing their phone number during account setup, business owners consent to receive service-related SMS messages as described in this SMS program disclosure and the FixMyDay.ai Terms of Service.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 3: Sample Messages -->
+  <div class="section">
+    <div class="section-label">Sample Messages</div>
+    <h2>Example SMS Messages</h2>
+    <p>Below are examples of the SMS messages sent by the FixMyNight program.</p>
+
+    <div class="sms-bubble-wrap">
+      <div class="sms-bubble">
+        <div class="sms-label">Verification SMS (sent when technician is added)</div>
+        <div class="sms-text">You have been added as a technician for Stellar HVAC via FixMyNight. Text ON to go on-call. Text STOP to opt out. Text HELP for help. Msg &amp; data rates may apply.</div>
+      </div>
+      <div class="sms-bubble">
+        <div class="sms-label">On-Call Confirmation (after texting ON)</div>
+        <div class="sms-text">You are now on-call for Stellar HVAC. Emergency calls will be forwarded to you. Text OFF to go off-call. Text STATUS to check your status.</div>
+      </div>
+      <div class="sms-bubble">
+        <div class="sms-label">Off-Call Confirmation (after texting OFF)</div>
+        <div class="sms-text">You are now off-call for Stellar HVAC. You will not receive emergency calls. Text ON to go back on-call.</div>
+      </div>
+      <div class="sms-bubble">
+        <div class="sms-label">Opt-Out Confirmation (after texting STOP)</div>
+        <div class="sms-text">You have been opted out of FixMyNight messages for Stellar HVAC. You will no longer receive on-call alerts. Text ON to re-subscribe.</div>
+      </div>
+      <div class="sms-bubble">
+        <div class="sms-label">Help Response (after texting HELP)</div>
+        <div class="sms-text">FixMyNight by FixMyDay.ai — after-hours answering for service contractors. For support, email fixmyday@use.startmail.com or visit https://fixmyday.ai. Text STOP to opt out. Msg &amp; data rates may apply.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 4: Keywords & Opt-Out -->
+  <div class="section">
+    <div class="section-label">Keywords &amp; Opt-Out</div>
+    <h2>SMS Keywords and How to Opt Out</h2>
+    <p>You can manage your FixMyNight SMS subscription at any time by texting any of the following keywords to your business's FixMyNight phone number.</p>
+
+    <table class="keyword-table">
+      <thead>
+        <tr><th>Keyword</th><th>Action</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>ON / START / YES</td><td>Opt in to on-call notifications and go on-call</td></tr>
+        <tr><td>OFF</td><td>Go off-call (stop receiving emergency dispatches)</td></tr>
+        <tr><td>STATUS</td><td>Check your current on-call status</td></tr>
+        <tr><td>STOP / CANCEL / UNSUBSCRIBE / END / QUIT</td><td>Opt out of all FixMyNight SMS messages</td></tr>
+        <tr><td>HELP / INFO</td><td>Receive program information and support contact</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-card">
+      <p>After opting out by texting STOP, you will receive a single confirmation message and no further messages will be sent unless you re-enroll by texting ON. You may also contact your business administrator to have your number removed from the system entirely.</p>
+    </div>
+  </div>
+
+  <!-- Section 5: Required Disclosures -->
+  <div class="section">
+    <div class="section-label">Disclosures</div>
+    <h2>Required Disclosures</h2>
+
+    <div class="info-card">
+      <p><strong style="color:var(--text-primary)">Message frequency:</strong> Message frequency varies based on call volume and service activity. Technicians on-call may receive multiple messages per shift during high-activity periods.</p>
+      <p><strong style="color:var(--text-primary)">Message and data rates may apply.</strong> Contact your mobile carrier for details about your messaging plan.</p>
+      <p><strong style="color:var(--text-primary)">Consent:</strong> Consent to receive text messages is not a condition of purchase or use of any other FixMyDay.ai service. Consent applies only to the FixMyNight SMS program as described on this page.</p>
+      <p><strong style="color:var(--text-primary)">Carriers:</strong> Carriers (including but not limited to AT&T, T-Mobile, and Verizon) are not liable for delayed or undelivered messages.</p>
+      <p style="margin-bottom:0"><strong style="color:var(--text-primary)">Privacy:</strong> No mobile information will be shared with third parties or affiliates for marketing or promotional purposes. See our <a href="https://fixmyday.ai/privacy" style="color:var(--amber)">Privacy Policy</a> for full details on how we handle your information.</p>
+    </div>
+  </div>
+
+  <!-- Section 6: Contact & Links -->
+  <div class="section">
+    <div class="section-label">Support &amp; Links</div>
+    <h2>Contact &amp; Related Policies</h2>
+    <p>For questions or support regarding the FixMyNight SMS program, contact us at <a href="mailto:fixmyday@use.startmail.com" style="color:var(--amber)">fixmyday@use.startmail.com</a>.</p>
+    <div class="footer-links">
+      <a href="https://fixmyday.ai/fixmynight">FixMyNight Product Page</a>
+      <a href="https://fixmyday.ai/terms">Terms of Service</a>
+      <a href="https://fixmyday.ai/privacy">Privacy Policy</a>
+    </div>
+  </div>
+
+</div>
+
+<!-- Footer -->
+<div class="footer-bar">
+  &copy; 2025–2026 Grasham Farm LLC, DBA FixMyDay.ai. All rights reserved.<br />
+  <a href="https://fixmyday.ai">fixmyday.ai</a>
+</div>
+
+</body>
+</html>

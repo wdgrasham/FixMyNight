@@ -181,6 +181,9 @@ def main():
         },
         "maxDurationSeconds": 600,
         "silenceTimeoutSeconds": 30,
+        "endCallFunctionEnabled": True,
+        "firstMessage": None,
+        "endCallMessage": None,
     }
 
     with httpx.Client() as http:

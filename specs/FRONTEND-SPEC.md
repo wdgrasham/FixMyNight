@@ -21,27 +21,42 @@ Both are secured by JWT. See BACKEND-SPEC.md — Authentication section.
 
 ## URL Structure
 
+### Public Pages
+
+Public pages use `PublicLayout.tsx` (shared nav + footer).
+
 ```
-fixmyday.ai/                          → Main fixmyday.ai landing (existing)
-fixmyday.ai/fixmynight                → FixMyNight product landing page
-fixmyday.ai/admin                     → Admin login
-fixmyday.ai/admin/dashboard           → Admin dashboard (requires admin JWT)
-fixmyday.ai/admin/clients             → Client list
-fixmyday.ai/admin/clients/new         → Onboarding form
-fixmyday.ai/admin/clients/{id}        → Client detail / edit
-fixmyday.ai/portal/setup              → First-time password setup (magic link)
-fixmyday.ai/portal/{client_id}        → Client portal login
-fixmyday.ai/portal/{client_id}/dashboard → Client dashboard (requires portal JWT)
-fixmyday.ai/portal/{client_id}/calls  → Call history
-fixmyday.ai/portal/{client_id}/settings → Client settings editor
-fixmyday.ai/portal/{client_id}/team   → Technician management
+fixmyday.ai/                          → FixMyDay.ai landing page
+fixmyday.ai/legal                     → Legal information
+fixmyday.ai/privacy                   → Privacy policy
+fixmyday.ai/terms                     → Terms & conditions
+fixmyday.ai/fixmynight                → FixMyNight product page
+fixmyday.ai/contact                   → Contact page
+```
+
+### App Pages
+
+App pages (admin portal + client portal) use `Layout.tsx`.
+
+```
+fixmyday.ai/fixmynight/admin                     → Admin login
+fixmyday.ai/fixmynight/admin/dashboard           → Admin dashboard (requires admin JWT)
+fixmyday.ai/fixmynight/admin/clients             → Client list
+fixmyday.ai/fixmynight/admin/clients/new         → Onboarding form
+fixmyday.ai/fixmynight/admin/clients/{id}        → Client detail / edit
+fixmyday.ai/fixmynight/portal/setup              → First-time password setup (magic link)
+fixmyday.ai/fixmynight/portal/{client_id}        → Client portal login
+fixmyday.ai/fixmynight/portal/{client_id}/dashboard → Client dashboard (requires portal JWT)
+fixmyday.ai/fixmynight/portal/{client_id}/calls  → Call history
+fixmyday.ai/fixmynight/portal/{client_id}/settings → Client settings editor
+fixmyday.ai/fixmynight/portal/{client_id}/team   → Technician management
 ```
 
 ---
 
 ## Admin Portal
 
-### Admin Login — /admin
+### Admin Login — /fixmynight/admin
 
 Simple password form. Admin is a single superuser — no username or email needed.
 On success, stores JWT in memory (not localStorage — not supported in this environment).
@@ -50,7 +65,7 @@ JWT stored in React state or context.
 Fields:
 - Password (single field)
 
-On success: redirect to `/admin/dashboard`
+On success: redirect to `/fixmynight/admin/dashboard`
 On failure: show `"Invalid credentials"` — do not specify what was wrong
 
 Rate limiting enforced server-side (5 attempts / 15 min). Frontend shows
@@ -58,7 +73,7 @@ Rate limiting enforced server-side (5 attempts / 15 min). Frontend shows
 
 ---
 
-### Admin Dashboard — /admin/dashboard
+### Admin Dashboard — /fixmynight/admin/dashboard
 
 Summary view. Shows:
 - Total active clients
@@ -68,7 +83,7 @@ Summary view. Shows:
 
 ---
 
-### Client List — /admin/clients
+### Client List — /fixmynight/admin/clients
 
 Table of all clients:
 
@@ -84,7 +99,7 @@ Table of all clients:
 
 ---
 
-### Onboarding Form — /admin/clients/new
+### Onboarding Form — /fixmynight/admin/clients/new
 
 Full client onboarding. On submit, calls `POST /api/v1/admin/clients`.
 Shows provisioning progress (Twilio → Vapi → Activate) with status indicators.
@@ -192,7 +207,7 @@ Show "Contact support" link on failure — do not leave admin stranded.
 
 ---
 
-### Client Detail / Edit — /admin/clients/{id}
+### Client Detail / Edit — /fixmynight/admin/clients/{id}
 
 Two-panel layout:
 - Left: Client info summary, status badge, Twilio number, Vapi assistant ID
@@ -213,7 +228,7 @@ routing calls. This can be reversed."
 
 ## Client Portal
 
-### First-Time Setup — /portal/setup?token={magic_link_token}
+### First-Time Setup — /fixmynight/portal/setup?token={magic_link_token}
 
 Shown when client clicks their magic link email. Simple password creation form.
 
@@ -221,13 +236,13 @@ Fields:
 - New Password (min 8 chars, 1 number, 1 special char)
 - Confirm Password
 
-On success: set portal JWT, redirect to `/portal/{client_id}/dashboard`
+On success: set portal JWT, redirect to `/fixmynight/portal/{client_id}/dashboard`
 On expired/invalid token: show "This link has expired. Contact your FixMyNight administrator
 for a new link." — do not show a login form
 
 ---
 
-### Client Portal Login — /portal/{client_id}
+### Client Portal Login — /fixmynight/portal/{client_id}
 
 Email + password login for returning clients. The `client_id` from the URL path
 is included in the login request so the backend can unambiguously identify the client.
@@ -246,7 +261,7 @@ Rate limited — show "Too many attempts. Please wait 15 minutes." on 429.
 
 ---
 
-### Client Dashboard — /portal/{client_id}/dashboard
+### Client Dashboard — /fixmynight/portal/{client_id}/dashboard
 
 Main landing page after login. Four sections:
 
@@ -311,7 +326,7 @@ Read-only summary with "Edit Settings →" link:
 
 ---
 
-### Call History — /portal/{client_id}/calls
+### Call History — /fixmynight/portal/{client_id}/calls
 
 Full call log with filtering.
 
@@ -345,7 +360,7 @@ No edit functionality — call records are read-only.
 
 ---
 
-### Settings — /portal/{client_id}/settings
+### Settings — /fixmynight/portal/{client_id}/settings
 
 Editable settings. Changes auto-save on blur or explicit save button.
 
@@ -403,7 +418,7 @@ No live transfers will be attempted."
 
 ---
 
-### Team — /portal/{client_id}/team
+### Team — /fixmynight/portal/{client_id}/team
 
 View and manage technicians.
 
@@ -445,11 +460,12 @@ Use React Context or Zustand for:
 - Current client_id (for portal)
 
 Token expiry handling:
-- On any 401 SESSION_EXPIRED response: clear token, redirect to login with message
+- On any 401 SESSION_EXPIRED response: clear token, redirect to appropriate login page
+  (`/fixmynight/admin` for admin, `/fixmynight/portal/{client_id}` for portal) with message
   "Your session has expired. Please log in again."
-- On any 401 TOKEN_INVALID response: clear token, redirect to login with message
+- On any 401 TOKEN_INVALID response: clear token, redirect to appropriate login page with message
   "Authentication error. Please log in again."
-- On any 403 CLIENT_SCOPE_MISMATCH: redirect to login — do not show technical detail
+- On any 403 CLIENT_SCOPE_MISMATCH: redirect to appropriate login page — do not show technical detail
 
 ---
 
@@ -471,10 +487,10 @@ if (response.status === 401) {
   const error = await response.json()
   if (error.detail === 'SESSION_EXPIRED') {
     clearToken()
-    navigate('/login', { message: 'Your session has expired. Please log in again.' })
+    navigate('/fixmynight/admin', { message: 'Your session has expired. Please log in again.' })
   } else {
     clearToken()
-    navigate('/login', { message: 'Authentication error. Please log in again.' })
+    navigate('/fixmynight/admin', { message: 'Authentication error. Please log in again.' })
   }
 }
 if (response.status === 429) {

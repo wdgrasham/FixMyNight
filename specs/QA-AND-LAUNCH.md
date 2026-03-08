@@ -25,8 +25,8 @@ Before running any test scenarios, confirm all of the following:
 - [ ] Twilio SMS webhook pointed at Railway backend
 - [ ] Vapi webhook URL and secret confirmed
 - [ ] At least one technician added with a verified phone number
-- [ ] Admin portal accessible at fixmyday.ai/admin
-- [ ] Client portal accessible at fixmyday.ai/portal/{stellar-client-id}
+- [ ] Admin portal accessible at fixmyday.ai/fixmynight/admin
+- [ ] Client portal accessible at fixmyday.ai/fixmynight/portal/{stellar-client-id}
 
 ---
 

@@ -36,10 +36,15 @@ async def _get_client_by_twilio_number(twilio_number: str, db) -> Client:
 @router.post("/twilio-sms")
 async def twilio_sms(request: Request, db: AsyncSession = Depends(get_db)):
     # Validate Twilio request signature
+    # Behind Railway's reverse proxy, request.url returns the internal URL.
+    # Twilio signs against the public URL, so we must reconstruct it.
     validator = RequestValidator(os.environ["TWILIO_AUTH_TOKEN"])
     form_data = await request.form()
     signature = request.headers.get("X-Twilio-Signature", "")
-    if not validator.validate(str(request.url), dict(form_data), signature):
+    proto = request.headers.get("X-Forwarded-Proto", request.url.scheme)
+    host = request.headers.get("X-Forwarded-Host", request.headers.get("Host", request.url.hostname))
+    public_url = f"{proto}://{host}{request.url.path}"
+    if not validator.validate(public_url, dict(form_data), signature):
         raise HTTPException(status_code=401, detail="INVALID_TWILIO_SIGNATURE")
 
     from_number = form_data.get("From")

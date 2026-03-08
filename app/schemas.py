@@ -1,8 +1,19 @@
+import re
 from pydantic import BaseModel, EmailStr, field_validator
 from typing import Optional, List
 from datetime import time, date, datetime
 from decimal import Decimal
 from uuid import UUID
+
+
+def validate_e164_phone(v: str) -> str:
+    """Normalize and validate a US phone number to E.164 format (+1XXXXXXXXXX)."""
+    digits = re.sub(r'\D', '', v)
+    if len(digits) == 10:
+        return f"+1{digits}"
+    if len(digits) == 11 and digits.startswith('1'):
+        return f"+{digits}"
+    raise ValueError('Invalid phone number format. Must be a valid 10-digit US number.')
 
 
 # --- Auth ---
@@ -27,6 +38,10 @@ class MagicLinkRequest(BaseModel):
     client_id: UUID
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
@@ -39,10 +54,22 @@ class TechnicianCreate(BaseModel):
     name: str
     phone: str
 
+    @field_validator('phone')
+    @classmethod
+    def validate_phone(cls, v: str) -> str:
+        return validate_e164_phone(v)
+
 
 class TechnicianUpdate(BaseModel):
     name: Optional[str] = None
     phone: Optional[str] = None
+
+    @field_validator('phone')
+    @classmethod
+    def validate_phone(cls, v: str) -> str:
+        if v is None:
+            return v
+        return validate_e164_phone(v)
 
 
 class TechnicianResponse(BaseModel):
@@ -83,6 +110,16 @@ class ClientCreate(BaseModel):
     agent_name: str = "Sarah"
     technicians: Optional[List[TechnicianCreate]] = None
 
+    @field_validator('owner_phone')
+    @classmethod
+    def validate_phone(cls, v: str) -> str:
+        return validate_e164_phone(v)
+
+    @field_validator('admin_sms_numbers')
+    @classmethod
+    def validate_sms_numbers(cls, v: List[str]) -> List[str]:
+        return [validate_e164_phone(n) for n in v if n.strip()]
+
 
 class ClientUpdate(BaseModel):
     business_name: Optional[str] = None
@@ -106,6 +143,20 @@ class ClientUpdate(BaseModel):
     agent_name: Optional[str] = None
     status: Optional[str] = None
 
+    @field_validator('owner_phone')
+    @classmethod
+    def validate_phone(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        return validate_e164_phone(v)
+
+    @field_validator('admin_sms_numbers')
+    @classmethod
+    def validate_sms_numbers(cls, v: Optional[List[str]]) -> Optional[List[str]]:
+        if v is None:
+            return v
+        return [validate_e164_phone(n) for n in v if n.strip()]
+
 
 class PortalSettingsUpdate(BaseModel):
     callback_expected_time: Optional[str] = None
@@ -120,6 +171,13 @@ class PortalSettingsUpdate(BaseModel):
     emergency_enabled: Optional[bool] = None
     contact_email: Optional[EmailStr] = None
     admin_sms_numbers: Optional[List[str]] = None
+
+    @field_validator('admin_sms_numbers')
+    @classmethod
+    def validate_sms_numbers(cls, v: Optional[List[str]]) -> Optional[List[str]]:
+        if v is None:
+            return v
+        return [validate_e164_phone(n) for n in v if n.strip()]
 
 
 class ClientResponse(BaseModel):
@@ -170,6 +228,8 @@ class CallResponse(BaseModel):
     transfer_success: Optional[bool] = None
     transferred_to_phone: Optional[str] = None
     vapi_call_id: Optional[str] = None
+    duration_seconds: Optional[int] = None
+    recording_url: Optional[str] = None
     flagged_urgent: bool
     requires_callback: bool
     morning_summary_sent_at: Optional[datetime] = None
@@ -185,9 +245,30 @@ class CallsListResponse(BaseModel):
 # --- Portal Dashboard ---
 
 
+class OnCallTechSummary(BaseModel):
+    name: str
+    since: Optional[str] = None
+
+
+class SettingsSummary(BaseModel):
+    summary_send_time: Optional[str] = None
+    callback_expected_time: Optional[str] = None
+    emergency_enabled: bool = False
+    emergency_fee: Optional[Decimal] = None
+    sleep_window_start: Optional[str] = None
+    sleep_window_end: Optional[str] = None
+
+
+class Stats7d(BaseModel):
+    total_calls: int = 0
+    emergencies: int = 0
+    transfers_completed: int = 0
+    transfer_success_rate: float = 0.0
+
+
 class DashboardResponse(BaseModel):
-    business_name: str
-    on_call_tech: Optional[TechnicianResponse] = None
+    on_call_tech: Optional[OnCallTechSummary] = None
+    twilio_number: Optional[str] = None
     recent_calls: List[CallResponse]
-    total_calls_today: int
-    emergency_enabled: bool
+    settings_summary: SettingsSummary
+    stats_7d: Stats7d

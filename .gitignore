@@ -26,3 +26,12 @@ Thumbs.db
 
 # Claude Code
 .claude/
+
+# Debug / API dumps
+vapi_call_detail.json
+vapi_phone.json
+*.zip
+
+# Saved HTML pages
+*.htm
+*_files/

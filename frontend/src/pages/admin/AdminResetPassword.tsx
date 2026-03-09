@@ -66,9 +66,9 @@ export default function AdminResetPassword() {
       navigate(ROUTES.ADMIN_DASHBOARD, { replace: true });
     } catch (err) {
       if (err instanceof ApiError) {
-        if (err.detail === 'RESET_LINK_EXPIRED') {
+        if (err.code === 'RESET_LINK_EXPIRED') {
           setError('This reset link has expired. Please request a new one.');
-        } else if (err.detail === 'TOKEN_INVALID') {
+        } else if (err.code === 'TOKEN_INVALID') {
           setError('This reset link is invalid. Please request a new one.');
         } else {
           setError('Something went wrong. Please try again.');

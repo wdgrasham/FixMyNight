@@ -829,4 +829,120 @@ Railway backend was crashing with `ProgrammingError: foreign key constraint "job
 
 ---
 
-*This document is the authoritative record of all V1.5 and V1.6 decisions. Any implementation that contradicts this document contains an error. Last updated: 2026-03-08.*
+## Session: March 9, 2026
+
+### Vapi Cost Tracking (commits 8612579, 865bacf)
+
+Added end-to-end Vapi cost tracking:
+
+1. **Webhook ingestion:** `end-of-call-report` handler extracts `costBreakdown.total` (USD) from Vapi payload. Stored in `calls.vapi_cost` column (`DECIMAL(10,4)`).
+2. **Startup migration:** `ALTER TABLE calls ADD COLUMN IF NOT EXISTS vapi_cost DECIMAL(10,4)` runs on app startup.
+3. **Admin client list:** New "Cost (MTD)" column shows month-to-date Vapi cost per client (sum of `vapi_cost` for calls created since the 1st of the current month).
+4. **Client detail page:** New "Vapi Usage & Cost" panel shows current and previous month breakdowns — total calls, total minutes (from `duration_seconds`), total Vapi cost. New endpoint `GET /api/v1/admin/clients/{id}/cost-stats`.
+5. **Schema:** `vapi_cost` added to `CallResponse` Pydantic model.
+
+### Pricing Decisions
+
+Locked in three subscription tiers:
+
+| Tier | Price | Calls Included |
+|------|-------|---------------|
+| Starter | $89/mo | 40 |
+| Standard | $169/mo | 100 |
+| Pro | $299/mo | 250 |
+
+Stripe Price IDs (test mode):
+- Starter: `price_1T8vmdF4SIXUt9Gk4fwXzQZH`
+- Standard: `price_1T8vnEF4SIXUt9Gk1AmWw7X0`
+- Pro: `price_1T8vnnF4SIXUt9GkUAZEokFf`
+
+### Stripe Subscription Billing (commits 076fe43, 6024921, 8f0d6d4, e6a371a, b6ca053, f49c465)
+
+Built Stripe Checkout integration (test mode):
+
+1. **Backend router:** `app/routers/stripe_billing.py`
+   - `POST /api/v1/stripe/create-checkout-session` — accepts `price_id` (and optional `client_id`), creates Stripe hosted checkout session with custom fields (business name, owner name) and phone number collection. Returns checkout URL.
+   - `POST /api/v1/webhooks/stripe` — handles `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted` events.
+   - `STRIPE_SECRET_KEY` and `STRIPE_PUBLISHABLE_KEY` added to Railway env vars.
+
+2. **Database columns:** Added `stripe_customer_id`, `stripe_subscription_id`, `subscription_tier`, `subscription_status` to `clients` table (startup migration).
+
+3. **Pricing section on product page:** Three tier cards embedded on `/fixmynight` product page before SMS Consent section. Anchor nav link "Pricing" for smooth scroll. Light theme (white cards, amber accents). Hover lift animation (translateY -8px, 300ms ease-out, enhanced shadow). Standard card marked "Most Popular" with amber border.
+
+4. **`/fixmynight/pricing` route:** Redirects to `/fixmynight#pricing` so direct links still work.
+
+5. **Post-checkout scroll:** Frontend auto-scrolls to `#pricing` section when returning from Stripe with `?checkout=success` or `?checkout=canceled` query params (hash fragments are stripped by Stripe redirect).
+
+6. **Bug fix — env var mismatch:** Pricing section used `VITE_API_URL` (undefined) instead of `VITE_API_BASE_URL`, causing fetch to hit Vercel origin instead of Railway backend. Fixed to match existing `api.ts` pattern.
+
+7. **Bug fix — `customer_creation`:** `customer_creation: "always"` is only valid in Stripe's `payment` mode, not `subscription` mode. Removed. Stripe always creates a customer for subscriptions.
+
+8. **Bug fix — duplicate phone field:** Removed `owner_phone` custom field from checkout (Stripe already collects phone via billing/Link). Added `phone_number_collection: {enabled: true}`. Webhook pulls phone from `customer_details.phone` instead of custom fields.
+
+### Semi-Automatic Client Onboarding (commits 350e32f, 11e20ce, 247c563)
+
+Built automated new-client flow triggered by Stripe checkout:
+
+**Checkout → Webhook → Client Record → Emails:**
+
+1. Stripe checkout collects: business name (custom field), owner name (custom field), email (billing), phone (Stripe phone collection).
+2. `checkout.session.completed` webhook auto-creates client with `status: "pending_setup"`, random portal password, Stripe IDs linked.
+3. Welcome email sent to customer via SendGrid: "Your subscription is active, setup within 24 hours."
+4. Admin notification email sent to `ADMIN_EMAIL`: business name, owner, email, phone, tier, setup checklist.
+
+**Admin Completes Setup → Portal Invite:**
+
+5. Admin sees "Pending Setup" badge (orange) on client list, assigns Twilio number, configures settings.
+6. When admin changes status from `pending_setup` → `active`, automatically sends portal magic link email with Twilio number and login instructions.
+
+**StatusBadge** updated: `pending_setup` → orange "Pending Setup" label.
+
+**New client statuses:** `pending` | `pending_setup` | `active` | `inactive` | `failed`
+
+---
+
+## Outstanding Items — Next Session Priorities
+
+### Bugs (Must Fix Before Launch)
+
+| # | Bug | Status |
+|---|-----|--------|
+| 1 | Emergency transfer → no answer → caller in silence | Three-layer fix deployed (fallbackPlan, summaryPlan, prompt). Needs verification with live call. |
+| 2 | `flagged_urgent` not auto-set for emergency calls | Fixed. Needs verification with new calls. |
+| 3 | `transferred_to_phone` / `transferred_to_tech_id` not stored | Fixed. Needs verification with new calls. |
+| 4 | `duration_seconds` always null | Fixed (end-of-call-report now updates existing records). Needs verification with new calls. |
+
+### Blocked
+
+| Item | Blocker |
+|------|---------|
+| Outbound SMS (tech notifications, admin alerts, morning summary SMS) | A2P 10DLC campaign approval pending |
+
+### Remaining Phase 5 Tests
+
+- Wrong number call scenario
+- Hangup call scenario (caller hangs up during greeting)
+- Morning summary email accuracy check
+- Full emergency dispatch cycle: call → fee → approval → transfer → success → summary
+- Sarah voice script refinements (if needed after test calls)
+- Verify portal forgot password end-to-end
+- Verify admin forgot password end-to-end
+
+### Stripe & Billing — Next Steps
+
+- Set up Stripe webhook endpoint in Stripe dashboard → `https://fixmynight-api-production.up.railway.app/api/v1/webhooks/stripe`
+- Set `STRIPE_WEBHOOK_SECRET` env var on Railway with the signing secret
+- Test full checkout flow end-to-end (checkout → webhook → client created → emails sent)
+- Switch Stripe from test mode to live mode when ready for production
+
+### Deferred Items
+
+- Per-day business hours (different hours per day of week) — post-launch
+- Admin service monitoring dashboard (Vapi/Twilio/Anthropic/Railway/Stripe balances)
+- Monthly client value summary email with ROI calculation
+- Configure Railway auto-deploy from GitHub repo
+- Overage billing ($1.50/call over plan limit) — track but don't enforce yet
+
+---
+
+*This document is the authoritative record of all V1.5 and V1.6 decisions. Any implementation that contradicts this document contains an error. Last updated: 2026-03-09.*

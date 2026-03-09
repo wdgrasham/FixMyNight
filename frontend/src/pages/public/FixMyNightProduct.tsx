@@ -322,28 +322,27 @@ function PricingSection() {
   };
 
   return (
-    <section id="pricing" className="relative bg-[#0F172A] py-24 md:py-32">
-      <div className="pointer-events-none absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#F59E0B]/20 to-transparent" />
+    <section id="pricing" className="relative bg-[#F8FAFC] py-24 md:py-32">
       <div className="mx-auto max-w-6xl px-6">
         <div className="mx-auto max-w-2xl text-center mb-16">
           <p className="text-sm font-semibold tracking-wide text-[#F59E0B] uppercase mb-3">Pricing</p>
-          <h2 className="text-balance text-3xl font-bold tracking-tight text-[#F8FAFC] sm:text-4xl">
+          <h2 className="text-balance text-3xl font-bold tracking-tight text-[#0F172A] sm:text-4xl">
             Simple, Transparent Pricing
           </h2>
-          <p className="mt-4 text-lg leading-relaxed text-[#94A3B8]">
-            Traditional answering services charge <span className="text-white font-semibold">$400–600/month</span> for a human
+          <p className="mt-4 text-lg leading-relaxed text-[#64748B]">
+            Traditional answering services charge <span className="text-[#0F172A] font-semibold">$400–600/month</span> for a human
             who reads from a script. FixMyNight's AI agent is smarter, faster, and a fraction of the cost.
           </p>
         </div>
 
         {checkoutStatus === 'success' && (
-          <div className="mb-8 bg-green-500/10 border border-green-500/30 rounded-xl p-4 text-center">
-            <p className="text-green-400 font-medium">Welcome aboard! Your subscription is active. We'll be in touch to get you set up.</p>
+          <div className="mb-8 bg-green-50 border border-green-200 rounded-xl p-4 text-center">
+            <p className="text-green-700 font-medium">Welcome aboard! Your subscription is active. We'll be in touch to get you set up.</p>
           </div>
         )}
         {checkoutStatus === 'canceled' && (
-          <div className="mb-8 bg-[#F59E0B]/10 border border-[#F59E0B]/30 rounded-xl p-4 text-center">
-            <p className="text-[#F59E0B]">Checkout was canceled. No worries — pick a plan when you're ready.</p>
+          <div className="mb-8 bg-amber-50 border border-amber-200 rounded-xl p-4 text-center">
+            <p className="text-[#D97706]">Checkout was canceled. No worries — pick a plan when you're ready.</p>
           </div>
         )}
 
@@ -353,8 +352,8 @@ function PricingSection() {
               key={tier.name}
               className={`relative rounded-2xl border p-8 flex flex-col transition-all duration-300 ease-out hover:-translate-y-2 ${
                 tier.popular
-                  ? 'bg-[#1E293B] border-[#F59E0B] shadow-xl shadow-[#F59E0B]/10 md:scale-105 hover:shadow-2xl hover:shadow-[#F59E0B]/20'
-                  : 'bg-[#1E293B]/60 border-[#334155] hover:shadow-2xl hover:shadow-[#0F172A]/80 hover:border-[#475569]'
+                  ? 'bg-white border-[#F59E0B] ring-1 ring-[#F59E0B] shadow-lg shadow-[#F59E0B]/10 md:scale-105 hover:shadow-2xl hover:shadow-[#F59E0B]/15'
+                  : 'bg-white border-[#E2E8F0] shadow-sm hover:shadow-xl hover:border-[#CBD5E1]'
               }`}
             >
               {tier.popular && (
@@ -367,16 +366,16 @@ function PricingSection() {
               )}
 
               <div className="mb-6">
-                <h3 className="text-lg font-semibold text-white">{tier.name}</h3>
-                <p className="text-sm text-[#94A3B8] mt-1">{tier.description}</p>
+                <h3 className="text-lg font-semibold text-[#0F172A]">{tier.name}</h3>
+                <p className="text-sm text-[#64748B] mt-1">{tier.description}</p>
               </div>
 
               <div className="mb-6">
                 <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-bold text-white">${tier.price}</span>
-                  <span className="text-[#64748B]">/month</span>
+                  <span className="text-4xl font-bold text-[#0F172A]">${tier.price}</span>
+                  <span className="text-[#94A3B8]">/month</span>
                 </div>
-                <p className="text-sm text-[#94A3B8] mt-1">{tier.calls} calls included</p>
+                <p className="text-sm text-[#64748B] mt-1">{tier.calls} calls included</p>
               </div>
 
               <ul className="space-y-3 mb-8 flex-1">
@@ -387,7 +386,7 @@ function PricingSection() {
                     ) : (
                       <Check className="w-4 h-4 text-[#F59E0B] mt-0.5 flex-shrink-0" />
                     )}
-                    <span className="text-sm text-[#CBD5E1]">{feature}</span>
+                    <span className="text-sm text-[#334155]">{feature}</span>
                   </li>
                 ))}
               </ul>
@@ -398,7 +397,7 @@ function PricingSection() {
                 className={`w-full py-3 px-4 rounded-lg text-sm font-semibold transition-all ${
                   tier.popular
                     ? 'bg-[#F59E0B] text-[#0F172A] hover:bg-[#D97706] shadow-lg shadow-[#F59E0B]/25'
-                    : 'bg-white/10 text-white hover:bg-white/20 border border-[#334155]'
+                    : 'bg-[#0F172A] text-white hover:bg-[#1E293B] border border-[#0F172A]'
                 } disabled:opacity-50`}
               >
                 {loadingTier === tier.name ? 'Redirecting...' : 'Get Started'}
@@ -408,11 +407,11 @@ function PricingSection() {
         </div>
 
         {/* Comparison callout */}
-        <div className="rounded-2xl border border-[#1E293B] bg-[#1E293B]/40 p-8 md:p-12">
+        <div className="rounded-2xl border border-[#E2E8F0] bg-white p-8 md:p-12 shadow-sm">
           <div className="grid md:grid-cols-2 gap-8 items-center">
             <div>
-              <h3 className="text-2xl font-bold text-white mb-3">Why switch from a traditional answering service?</h3>
-              <p className="text-[#94A3B8]">
+              <h3 className="text-2xl font-bold text-[#0F172A] mb-3">Why switch from a traditional answering service?</h3>
+              <p className="text-[#64748B]">
                 Most contractors pay $400–600/month for a human operator who reads from a script,
                 can't dispatch techs, and sends you a voicemail at 7am. FixMyNight does it all —
                 instantly, accurately, for a fraction of the cost.
@@ -443,7 +442,6 @@ function PricingSection() {
           </div>
         </div>
       </div>
-      <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#F59E0B]/20 to-transparent" />
     </section>
   );
 }

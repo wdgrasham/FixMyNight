@@ -35,6 +35,7 @@ PORTAL_EDITABLE_FIELDS = {
     "business_hours_start",
     "business_hours_end",
     "business_days",
+    "business_hours_schedule",
     "business_hours_emergency_dispatch",
     "emergency_fee",
     "emergency_enabled",
@@ -49,6 +50,7 @@ VAPI_REBUILD_TRIGGERS = {
     "business_hours_start",
     "business_hours_end",
     "business_days",
+    "business_hours_schedule",
     "sleep_window_start",
     "sleep_window_end",
     "business_hours_emergency_dispatch",
@@ -266,6 +268,7 @@ async def get_settings(
         "summary_send_time": client.summary_send_time,
         "callback_expected_time": client.callback_expected_time,
         "agent_name": client.agent_name,
+        "business_hours_schedule": client.business_hours_schedule,
     }
 
 

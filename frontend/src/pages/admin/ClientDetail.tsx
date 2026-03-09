@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { api, ApiError } from '../../api';
 import { ROUTES } from '../../routes';
 import type { Client, Technician } from '../../types';
+import { DAY_KEYS, DAY_LABELS, defaultSchedule } from '../../types';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import ErrorBanner from '../../components/ErrorBanner';
 import StatusBadge from '../../components/StatusBadge';
@@ -10,8 +11,7 @@ import ConfirmModal from '../../components/ConfirmModal';
 import PhoneInput, { formatPhoneDisplay } from '../../components/PhoneInput';
 import TimePicker, { formatTimeDisplay } from '../../components/TimePicker';
 import SaveIndicator from '../../components/SaveIndicator';
-
-const DAY_NAMES = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+import BusinessHoursEditor from '../../components/BusinessHoursEditor';
 
 export default function ClientDetail() {
   const { id } = useParams<{ id: string }>();
@@ -70,6 +70,7 @@ export default function ClientDetail() {
   const VAPI_REBUILD_TRIGGERS = new Set([
     'emergency_fee', 'emergency_enabled', 'callback_expected_time',
     'business_hours_start', 'business_hours_end', 'business_days',
+    'business_hours_schedule',
     'sleep_window_start', 'sleep_window_end', 'business_hours_emergency_dispatch',
     'business_name', 'industry', 'agent_name',
   ]);
@@ -269,8 +270,26 @@ export default function ClientDetail() {
                 <div><dt className="text-gray-500">Industry</dt><dd className="text-gray-900">{client.industry}</dd></div>
                 <div><dt className="text-gray-500">Agent Name</dt><dd className="text-gray-900">{client.agent_name}</dd></div>
                 <div><dt className="text-gray-500">Emergency Dispatch</dt><dd className="text-gray-900">{client.emergency_enabled ? `ON${client.emergency_fee ? ` ($${client.emergency_fee} fee)` : ''}` : 'OFF'}</dd></div>
-                <div><dt className="text-gray-500">Business Hours</dt><dd className="text-gray-900">{formatTimeDisplay(client.business_hours_start)} – {formatTimeDisplay(client.business_hours_end)}</dd></div>
-                <div><dt className="text-gray-500">Business Days</dt><dd className="text-gray-900">{client.business_days.map((d) => DAY_NAMES[d]).join(', ')}</dd></div>
+                <div>
+                  <dt className="text-gray-500">Business Hours</dt>
+                  <dd className="text-gray-900">
+                    {client.business_hours_schedule ? (
+                      <div className="space-y-0.5 mt-1">
+                        {DAY_KEYS.map((day) => {
+                          const cfg = client.business_hours_schedule![day];
+                          return (
+                            <div key={day} className="text-xs">
+                              <span className="inline-block w-16 font-medium">{DAY_LABELS[day].slice(0, 3)}</span>
+                              {cfg.enabled ? `${formatTimeDisplay(cfg.start || '')} – ${formatTimeDisplay(cfg.end || '')}` : <span className="text-gray-400">Closed</span>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <>{formatTimeDisplay(client.business_hours_start)} – {formatTimeDisplay(client.business_hours_end)}</>
+                    )}
+                  </dd>
+                </div>
                 {client.sleep_window_start && (
                   <div><dt className="text-gray-500">Sleep Window</dt><dd className="text-gray-900">{formatTimeDisplay(client.sleep_window_start)} – {formatTimeDisplay(client.sleep_window_end || '')}</dd></div>
                 )}
@@ -291,8 +310,26 @@ export default function ClientDetail() {
               <div><dt className="text-gray-500">Industry</dt><dd className="text-gray-900">{client.industry}</dd></div>
               <div><dt className="text-gray-500">Agent Name</dt><dd className="text-gray-900">{client.agent_name}</dd></div>
               <div><dt className="text-gray-500">Emergency Dispatch</dt><dd className="text-gray-900">{client.emergency_enabled ? `ON${client.emergency_fee ? ` ($${client.emergency_fee} fee)` : ''}` : 'OFF'}</dd></div>
-              <div><dt className="text-gray-500">Business Hours</dt><dd className="text-gray-900">{formatTimeDisplay(client.business_hours_start)} – {formatTimeDisplay(client.business_hours_end)}</dd></div>
-              <div><dt className="text-gray-500">Business Days</dt><dd className="text-gray-900">{client.business_days.map((d) => DAY_NAMES[d]).join(', ')}</dd></div>
+              <div>
+                <dt className="text-gray-500">Business Hours</dt>
+                <dd className="text-gray-900">
+                  {client.business_hours_schedule ? (
+                    <div className="space-y-0.5 mt-1">
+                      {DAY_KEYS.map((day) => {
+                        const cfg = client.business_hours_schedule![day];
+                        return (
+                          <div key={day} className="text-xs">
+                            <span className="inline-block w-16 font-medium">{DAY_LABELS[day].slice(0, 3)}</span>
+                            {cfg.enabled ? `${formatTimeDisplay(cfg.start || '')} – ${formatTimeDisplay(cfg.end || '')}` : <span className="text-gray-400">Closed</span>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <>{formatTimeDisplay(client.business_hours_start)} – {formatTimeDisplay(client.business_hours_end)}</>
+                  )}
+                </dd>
+              </div>
               {client.sleep_window_start && (
                 <div><dt className="text-gray-500">Sleep Window</dt><dd className="text-gray-900">{formatTimeDisplay(client.sleep_window_start)} – {formatTimeDisplay(client.sleep_window_end || '')}</dd></div>
               )}
@@ -351,33 +388,12 @@ export default function ClientDetail() {
                   <input type="number" step="0.01" value={editData.emergency_fee ?? ''} onChange={(e) => setEditData({ ...editData, emergency_fee: e.target.value ? Number(e.target.value) : null })} className="w-32 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#F59E0B]" />
                 </div>
               )}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Business Hours Start</label>
-                  <TimePicker value={editData.business_hours_start || ''} onChange={(v) => setEditData({ ...editData, business_hours_start: v })} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Business Hours End</label>
-                  <TimePicker value={editData.business_hours_end || ''} onChange={(v) => setEditData({ ...editData, business_hours_end: v })} />
-                </div>
-              </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Business Days</label>
-                <div className="flex gap-2 flex-wrap">
-                  {[1, 2, 3, 4, 5, 6, 7].map((d) => (
-                    <button
-                      key={d}
-                      type="button"
-                      onClick={() => {
-                        const days = editData.business_days || [];
-                        setEditData({ ...editData, business_days: days.includes(d) ? days.filter((x) => x !== d) : [...days, d].sort() });
-                      }}
-                      className={`px-3 py-1 rounded-md text-sm font-medium border ${(editData.business_days || []).includes(d) ? 'bg-[#F59E0B] text-[#0F172A] border-[#F59E0B]' : 'bg-white text-gray-700 border-gray-300'}`}
-                    >
-                      {DAY_NAMES[d]}
-                    </button>
-                  ))}
-                </div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Business Hours</label>
+                <BusinessHoursEditor
+                  schedule={editData.business_hours_schedule || defaultSchedule()}
+                  onChange={(s) => setEditData({ ...editData, business_hours_schedule: s })}
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Business Hours Emergency Dispatch</label>

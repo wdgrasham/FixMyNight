@@ -46,6 +46,40 @@ async def lifespan(app: FastAPI):
         await conn.execute(text(
             "ALTER TABLE clients ADD COLUMN IF NOT EXISTS last_monthly_summary_sent_date DATE"
         ))
+        # Per-day business hours schedule
+        await conn.execute(text(
+            "ALTER TABLE clients ADD COLUMN IF NOT EXISTS business_hours_schedule JSONB"
+        ))
+        # Backfill business_hours_schedule from old fields for existing clients
+        await conn.execute(text("""
+            UPDATE clients SET business_hours_schedule = jsonb_build_object(
+                'monday', jsonb_build_object('enabled', 1 = ANY(business_days), 'start',
+                    CASE WHEN 1 = ANY(business_days) THEN to_char(business_hours_start, 'HH24:MI') END,
+                    'end', CASE WHEN 1 = ANY(business_days) THEN to_char(business_hours_end, 'HH24:MI') END),
+                'tuesday', jsonb_build_object('enabled', 2 = ANY(business_days), 'start',
+                    CASE WHEN 2 = ANY(business_days) THEN to_char(business_hours_start, 'HH24:MI') END,
+                    'end', CASE WHEN 2 = ANY(business_days) THEN to_char(business_hours_end, 'HH24:MI') END),
+                'wednesday', jsonb_build_object('enabled', 3 = ANY(business_days), 'start',
+                    CASE WHEN 3 = ANY(business_days) THEN to_char(business_hours_start, 'HH24:MI') END,
+                    'end', CASE WHEN 3 = ANY(business_days) THEN to_char(business_hours_end, 'HH24:MI') END),
+                'thursday', jsonb_build_object('enabled', 4 = ANY(business_days), 'start',
+                    CASE WHEN 4 = ANY(business_days) THEN to_char(business_hours_start, 'HH24:MI') END,
+                    'end', CASE WHEN 4 = ANY(business_days) THEN to_char(business_hours_end, 'HH24:MI') END),
+                'friday', jsonb_build_object('enabled', 5 = ANY(business_days), 'start',
+                    CASE WHEN 5 = ANY(business_days) THEN to_char(business_hours_start, 'HH24:MI') END,
+                    'end', CASE WHEN 5 = ANY(business_days) THEN to_char(business_hours_end, 'HH24:MI') END),
+                'saturday', jsonb_build_object('enabled', 6 = ANY(business_days), 'start',
+                    CASE WHEN 6 = ANY(business_days) THEN to_char(business_hours_start, 'HH24:MI') END,
+                    'end', CASE WHEN 6 = ANY(business_days) THEN to_char(business_hours_end, 'HH24:MI') END),
+                'sunday', jsonb_build_object('enabled', 7 = ANY(business_days), 'start',
+                    CASE WHEN 7 = ANY(business_days) THEN to_char(business_hours_start, 'HH24:MI') END,
+                    'end', CASE WHEN 7 = ANY(business_days) THEN to_char(business_hours_end, 'HH24:MI') END)
+            )
+            WHERE business_hours_schedule IS NULL
+              AND business_hours_start IS NOT NULL
+              AND business_hours_end IS NOT NULL
+              AND business_days IS NOT NULL
+        """))
         # Overage billing columns
         await conn.execute(text(
             "ALTER TABLE clients ADD COLUMN IF NOT EXISTS plan_call_limit INTEGER"

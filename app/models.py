@@ -29,6 +29,7 @@ class Client(Base):
     business_hours_start = Column(Time)
     business_hours_end = Column(Time)
     business_days = Column(ARRAY(Integer), default=[1, 2, 3, 4, 5])
+    business_hours_schedule = Column(JSONB)
     business_hours_emergency_dispatch = Column(Boolean, nullable=False, default=True)
     sleep_window_start = Column(Time)
     sleep_window_end = Column(Time)

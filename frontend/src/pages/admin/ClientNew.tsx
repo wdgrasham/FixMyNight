@@ -2,10 +2,12 @@ import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, ApiError } from '../../api';
 import { ROUTES } from '../../routes';
-import type { Client, ClientCreatePayload } from '../../types';
+import type { Client, ClientCreatePayload, BusinessHoursSchedule } from '../../types';
+import { defaultSchedule } from '../../types';
 import PhoneInput from '../../components/PhoneInput';
 import TimePicker from '../../components/TimePicker';
 import ErrorBanner from '../../components/ErrorBanner';
+import BusinessHoursEditor from '../../components/BusinessHoursEditor';
 
 const INDUSTRIES = [
   'HVAC', 'Plumbing', 'Electrical', 'Locksmith', 'Pest Control',
@@ -33,8 +35,6 @@ const US_TIMEZONES = [
   { label: 'Alaska (AKT)', value: 'America/Anchorage' },
   { label: 'Hawaii (HT)', value: 'Pacific/Honolulu' },
 ];
-
-const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 interface TechEntry { name: string; phone: string }
 
@@ -72,9 +72,7 @@ export default function ClientNew() {
   const [adminSmsNumbers, setAdminSmsNumbers] = useState<string[]>(['']);
 
   // Section 3: Business Hours
-  const [businessDays, setBusinessDays] = useState<number[]>([1, 2, 3, 4, 5]);
-  const [businessHoursStart, setBusinessHoursStart] = useState('08:00');
-  const [businessHoursEnd, setBusinessHoursEnd] = useState('18:00');
+  const [schedule, setSchedule] = useState<BusinessHoursSchedule>(defaultSchedule());
   const [bizHoursDispatch, setBizHoursDispatch] = useState(true);
 
   // Section 4: Sleep Window
@@ -88,12 +86,6 @@ export default function ClientNew() {
 
   // Section 6: Technicians
   const [techs, setTechs] = useState<TechEntry[]>([{ name: '', phone: '' }]);
-
-  const toggleDay = (day: number) => {
-    setBusinessDays((prev) =>
-      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort()
-    );
-  };
 
   const updateTech = (idx: number, field: keyof TechEntry, value: string) => {
     setTechs((prev) => prev.map((t, i) => (i === idx ? { ...t, [field]: value } : t)));
@@ -124,8 +116,8 @@ export default function ClientNew() {
     if (!ownerName.trim()) return 'Owner name is required.';
     if (!ownerPhone.trim()) return 'Owner phone is required.';
     if (!contactEmail.trim() || !contactEmail.includes('@')) return 'Valid email is required.';
-    if (businessDays.length === 0) return 'Select at least one business day.';
-    if (businessHoursEnd <= businessHoursStart) return 'Business hours end must be after start.';
+    const enabledDays = Object.values(schedule).filter((d) => d.enabled);
+    if (enabledDays.length === 0) return 'Select at least one business day.';
     if (emergencyEnabled && emergencyFee && (isNaN(Number(emergencyFee)) || Number(emergencyFee) < 0)) {
       return 'Emergency fee must be a positive number.';
     }
@@ -162,6 +154,12 @@ export default function ClientNew() {
       const smsNumbers = adminSmsNumbers.filter((n) => n.trim());
       if (smsNumbers.length === 0 && ownerPhone) smsNumbers.push(ownerPhone);
 
+      // Derive legacy fields from schedule for backward compat
+      const isoMap: Record<string, number> = { monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6, sunday: 7 };
+      const enabledEntries = Object.entries(schedule).filter(([, v]) => v.enabled);
+      const businessDays = enabledEntries.map(([k]) => isoMap[k]).sort();
+      const firstEnabled = enabledEntries[0]?.[1];
+
       const payload: ClientCreatePayload = {
         business_name: businessName.trim(),
         owner_name: ownerName.trim(),
@@ -173,9 +171,10 @@ export default function ClientNew() {
         emergency_enabled: emergencyEnabled,
         emergency_fee: emergencyEnabled && emergencyFee ? Number(emergencyFee) : null,
         admin_sms_numbers: smsNumbers,
-        business_hours_start: businessHoursStart,
-        business_hours_end: businessHoursEnd,
+        business_hours_start: firstEnabled?.start || '08:00',
+        business_hours_end: firstEnabled?.end || '18:00',
         business_days: businessDays,
+        business_hours_schedule: schedule,
         business_hours_emergency_dispatch: bizHoursDispatch,
         sleep_window_start: sleepEnabled ? sleepStart : null,
         sleep_window_end: sleepEnabled ? sleepEnd : null,
@@ -371,36 +370,8 @@ export default function ClientNew() {
         <section className="bg-white rounded-lg border border-gray-200 p-6">
           <h2 className="text-lg font-medium text-gray-900 mb-4">Business Hours</h2>
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Business Days</label>
-              <div className="flex flex-wrap gap-2">
-                {DAY_NAMES.map((name, i) => {
-                  const day = i + 1;
-                  const selected = businessDays.includes(day);
-                  return (
-                    <button
-                      key={day}
-                      type="button"
-                      onClick={() => toggleDay(day)}
-                      className={`px-3 py-1.5 rounded-md text-sm font-medium border ${selected ? 'bg-brand text-white border-brand' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
-                    >
-                      {name}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
-                <TimePicker value={businessHoursStart} onChange={setBusinessHoursStart} required />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">End Time</label>
-                <TimePicker value={businessHoursEnd} onChange={setBusinessHoursEnd} required />
-              </div>
-            </div>
-            <label className="flex items-center gap-3 cursor-pointer">
+            <BusinessHoursEditor schedule={schedule} onChange={setSchedule} />
+            <label className="flex items-center gap-3 cursor-pointer mt-3">
               <input type="checkbox" checked={bizHoursDispatch} onChange={(e) => setBizHoursDispatch(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-[#F59E0B] focus:ring-[#F59E0B]" />
               <span className="text-sm font-medium text-gray-700">Emergency Dispatch During Business Hours</span>
             </label>

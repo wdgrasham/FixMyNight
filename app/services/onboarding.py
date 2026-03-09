@@ -100,10 +100,28 @@ async def provision_client(payload, db: AsyncSession) -> Client:
         await db.commit()
 
         # Step 5: Create routing_rules
+        # Derive after-hours from schedule or legacy fields
+        after_start = dt_time(18, 0)
+        after_end = dt_time(8, 0)
+        schedule = client.business_hours_schedule
+        if schedule:
+            # Find the latest end time across all enabled days
+            for day_cfg in schedule.values():
+                if isinstance(day_cfg, dict) and day_cfg.get("enabled") and day_cfg.get("end"):
+                    t = _parse_time(day_cfg["end"])
+                    if t and t > after_start:
+                        after_start = t
+                if isinstance(day_cfg, dict) and day_cfg.get("enabled") and day_cfg.get("start"):
+                    t = _parse_time(day_cfg["start"])
+                    if t and t < after_end:
+                        after_end = t
+        else:
+            after_start = client.business_hours_end or dt_time(18, 0)
+            after_end = client.business_hours_start or dt_time(8, 0)
         rule = RoutingRule(
             client_id=client.id,
-            after_hours_start=client.business_hours_end or dt_time(18, 0),
-            after_hours_end=client.business_hours_start or dt_time(8, 0),
+            after_hours_start=after_start,
+            after_hours_end=after_end,
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
         )

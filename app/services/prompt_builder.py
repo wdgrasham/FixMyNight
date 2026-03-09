@@ -5,6 +5,7 @@ See BACKEND-SPEC.md — Prompt Builder section for the reference implementation.
 """
 
 from .industry_defaults import get_industry_config
+from .time_window import get_next_open_info
 
 
 def _format_time_12h(t):
@@ -47,6 +48,12 @@ def build_sarah_prompt(client, time_window: str = "evening") -> str:
         if client.callback_expected_time
         else "9 AM"
     )
+
+    # Next open info for accurate callback promises
+    next_open = get_next_open_info(client)
+    next_open_str = ""
+    if next_open and next_open.get("day_name"):
+        next_open_str = f" ({next_open['day_name']} at {next_open['start']})"
 
     # Format fee for display
     fee_display = ""
@@ -161,7 +168,7 @@ Collect: name, callback number.
 Read back their callback number to confirm.
 
 Then say:
-"So that's [their name] at [their number], and I'll make sure the team gets your message. They'll reach out to you by {callback_time} tomorrow morning."
+"So that's [their name] at [their number], and I'll make sure the team gets your message. They'll reach out to you by {callback_time}{next_open_str}."
 
 ---
 

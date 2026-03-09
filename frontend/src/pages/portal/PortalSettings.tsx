@@ -1,20 +1,21 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../../api';
-import type { Client, PortalSettingsPayload } from '../../types';
+import type { Client, PortalSettingsPayload, BusinessHoursSchedule } from '../../types';
+import { defaultSchedule } from '../../types';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import ErrorBanner from '../../components/ErrorBanner';
 import TimePicker from '../../components/TimePicker';
 import PhoneInput from '../../components/PhoneInput';
 import SaveIndicator from '../../components/SaveIndicator';
+import BusinessHoursEditor from '../../components/BusinessHoursEditor';
 
 const VAPI_REBUILD_TRIGGERS = new Set([
   'emergency_fee', 'emergency_enabled', 'callback_expected_time',
   'business_hours_start', 'business_hours_end', 'business_days',
+  'business_hours_schedule',
   'sleep_window_start', 'sleep_window_end', 'business_hours_emergency_dispatch',
 ]);
-
-const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 export default function PortalSettings() {
   const { clientId } = useParams<{ clientId: string }>();
@@ -60,6 +61,7 @@ export default function PortalSettings() {
       business_hours_start: settings.business_hours_start,
       business_hours_end: settings.business_hours_end,
       business_days: settings.business_days,
+      business_hours_schedule: settings.business_hours_schedule || undefined,
       business_hours_emergency_dispatch: settings.business_hours_emergency_dispatch,
       emergency_fee: settings.emergency_fee,
       emergency_enabled: settings.emergency_enabled,
@@ -99,12 +101,9 @@ export default function PortalSettings() {
     }
   };
 
-  const toggleDay = (day: number) => {
+  const updateSchedule = (schedule: BusinessHoursSchedule) => {
     if (!settings) return;
-    const days = settings.business_days.includes(day)
-      ? settings.business_days.filter((d) => d !== day)
-      : [...settings.business_days, day].sort();
-    update('business_days', days);
+    setSettings({ ...settings, business_hours_schedule: schedule } as Client);
   };
 
   const updateAdminSms = (idx: number, value: string) => {
@@ -177,36 +176,11 @@ export default function PortalSettings() {
         <section className="bg-white rounded-lg border border-gray-200 p-6">
           <h2 className="text-lg font-medium text-gray-900 mb-4">Business Hours</h2>
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Business Days</label>
-              <div className="flex flex-wrap gap-2">
-                {DAY_NAMES.map((name, i) => {
-                  const day = i + 1;
-                  const selected = settings.business_days.includes(day);
-                  return (
-                    <button
-                      key={day}
-                      type="button"
-                      onClick={() => toggleDay(day)}
-                      className={`px-3 py-1.5 rounded-md text-sm font-medium border ${selected ? 'bg-brand text-white border-brand' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
-                    >
-                      {name}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
-                <TimePicker value={settings.business_hours_start} onChange={(v) => update('business_hours_start', v)} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">End Time</label>
-                <TimePicker value={settings.business_hours_end} onChange={(v) => update('business_hours_end', v)} />
-              </div>
-            </div>
-            <label className="flex items-center gap-3 cursor-pointer">
+            <BusinessHoursEditor
+              schedule={settings.business_hours_schedule || defaultSchedule()}
+              onChange={updateSchedule}
+            />
+            <label className="flex items-center gap-3 cursor-pointer mt-3">
               <input
                 type="checkbox"
                 checked={settings.business_hours_emergency_dispatch}

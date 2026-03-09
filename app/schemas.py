@@ -102,6 +102,7 @@ class ClientCreate(BaseModel):
     business_hours_start: Optional[str] = None
     business_hours_end: Optional[str] = None
     business_days: List[int] = [1, 2, 3, 4, 5]
+    business_hours_schedule: Optional[dict] = None
     business_hours_emergency_dispatch: bool = True
     sleep_window_start: Optional[str] = None
     sleep_window_end: Optional[str] = None
@@ -135,6 +136,7 @@ class ClientUpdate(BaseModel):
     business_hours_start: Optional[str] = None
     business_hours_end: Optional[str] = None
     business_days: Optional[List[int]] = None
+    business_hours_schedule: Optional[dict] = None
     business_hours_emergency_dispatch: Optional[bool] = None
     sleep_window_start: Optional[str] = None
     sleep_window_end: Optional[str] = None
@@ -167,6 +169,7 @@ class PortalSettingsUpdate(BaseModel):
     business_hours_start: Optional[str] = None
     business_hours_end: Optional[str] = None
     business_days: Optional[List[int]] = None
+    business_hours_schedule: Optional[dict] = None
     business_hours_emergency_dispatch: Optional[bool] = None
     emergency_fee: Optional[Decimal] = None
     emergency_enabled: Optional[bool] = None
@@ -195,6 +198,7 @@ class ClientResponse(BaseModel):
     business_hours_start: Optional[time] = None
     business_hours_end: Optional[time] = None
     business_days: Optional[List[int]] = None
+    business_hours_schedule: Optional[dict] = None
     business_hours_emergency_dispatch: bool
     sleep_window_start: Optional[time] = None
     sleep_window_end: Optional[time] = None

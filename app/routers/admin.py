@@ -35,6 +35,7 @@ VAPI_REBUILD_TRIGGERS = {
     "business_hours_start",
     "business_hours_end",
     "business_days",
+    "business_hours_schedule",
     "sleep_window_start",
     "sleep_window_end",
     "business_hours_emergency_dispatch",

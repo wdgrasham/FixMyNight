@@ -1,3 +1,40 @@
+export interface DaySchedule {
+  enabled: boolean;
+  start: string | null;
+  end: string | null;
+}
+
+export type BusinessHoursSchedule = {
+  monday: DaySchedule;
+  tuesday: DaySchedule;
+  wednesday: DaySchedule;
+  thursday: DaySchedule;
+  friday: DaySchedule;
+  saturday: DaySchedule;
+  sunday: DaySchedule;
+};
+
+export const DAY_KEYS: (keyof BusinessHoursSchedule)[] = [
+  'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
+];
+
+export const DAY_LABELS: Record<keyof BusinessHoursSchedule, string> = {
+  monday: 'Monday', tuesday: 'Tuesday', wednesday: 'Wednesday',
+  thursday: 'Thursday', friday: 'Friday', saturday: 'Saturday', sunday: 'Sunday',
+};
+
+export function defaultSchedule(): BusinessHoursSchedule {
+  return {
+    monday:    { enabled: true,  start: '08:00', end: '18:00' },
+    tuesday:   { enabled: true,  start: '08:00', end: '18:00' },
+    wednesday: { enabled: true,  start: '08:00', end: '18:00' },
+    thursday:  { enabled: true,  start: '08:00', end: '18:00' },
+    friday:    { enabled: true,  start: '08:00', end: '18:00' },
+    saturday:  { enabled: false, start: null, end: null },
+    sunday:    { enabled: false, start: null, end: null },
+  };
+}
+
 export interface Client {
   id: string;
   business_name: string;
@@ -13,6 +50,7 @@ export interface Client {
   business_hours_start: string;
   business_hours_end: string;
   business_days: number[];
+  business_hours_schedule: BusinessHoursSchedule | null;
   business_hours_emergency_dispatch: boolean;
   sleep_window_start: string | null;
   sleep_window_end: string | null;
@@ -124,6 +162,7 @@ export interface ClientCreatePayload {
   business_hours_start: string;
   business_hours_end: string;
   business_days: number[];
+  business_hours_schedule?: BusinessHoursSchedule;
   business_hours_emergency_dispatch: boolean;
   sleep_window_start?: string | null;
   sleep_window_end?: string | null;
@@ -140,6 +179,7 @@ export interface PortalSettingsPayload {
   business_hours_start?: string;
   business_hours_end?: string;
   business_days?: number[];
+  business_hours_schedule?: BusinessHoursSchedule;
   business_hours_emergency_dispatch?: boolean;
   emergency_fee?: number | null;
   emergency_enabled?: boolean;

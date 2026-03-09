@@ -351,10 +351,10 @@ function PricingSection() {
           {tiers.map((tier) => (
             <div
               key={tier.name}
-              className={`relative rounded-2xl border p-8 flex flex-col ${
+              className={`relative rounded-2xl border p-8 flex flex-col transition-all duration-300 ease-out hover:-translate-y-2 ${
                 tier.popular
-                  ? 'bg-[#1E293B] border-[#F59E0B] shadow-xl shadow-[#F59E0B]/10 md:scale-105'
-                  : 'bg-[#1E293B]/60 border-[#334155]'
+                  ? 'bg-[#1E293B] border-[#F59E0B] shadow-xl shadow-[#F59E0B]/10 md:scale-105 hover:shadow-2xl hover:shadow-[#F59E0B]/20'
+                  : 'bg-[#1E293B]/60 border-[#334155] hover:shadow-2xl hover:shadow-[#0F172A]/80 hover:border-[#475569]'
               }`}
             >
               {tier.popular && (

@@ -1,4 +1,6 @@
 import os
+import json
+import secrets
 import stripe
 from fastapi import APIRouter, Request, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,6 +9,8 @@ from datetime import datetime
 
 from ..database import get_db
 from ..models import Client
+from ..auth import hash_password
+from ..services.email_service import send_summary_email
 
 router = APIRouter(tags=["stripe"])
 
@@ -20,6 +24,8 @@ PRICE_TO_TIER = {
     "price_1T8vnEF4SIXUt9Gk1AmWw7X0": "standard",
     "price_1T8vnnF4SIXUt9GkUAZEokFf": "pro",
 }
+
+TIER_LABELS = {"starter": "Starter", "standard": "Standard", "pro": "Pro"}
 
 VALID_PRICE_IDS = set(PRICE_TO_TIER.keys())
 
@@ -42,6 +48,26 @@ async def create_checkout_session(request: Request, db: AsyncSession = Depends(g
         "success_url": f"{frontend_url}/fixmynight?checkout=success#pricing",
         "cancel_url": f"{frontend_url}/fixmynight?checkout=canceled#pricing",
         "metadata": {"tier": PRICE_TO_TIER[price_id]},
+        "custom_fields": [
+            {
+                "key": "business_name",
+                "label": {"type": "custom", "custom": "Business Name"},
+                "type": "text",
+            },
+            {
+                "key": "owner_name",
+                "label": {"type": "custom", "custom": "Owner Full Name"},
+                "type": "text",
+            },
+            {
+                "key": "owner_phone",
+                "label": {"type": "custom", "custom": "Phone Number"},
+                "type": "text",
+            },
+        ],
+        # Collect email via billing details
+        "customer_creation": "always",
+        "billing_address_collection": "auto",
     }
 
     # If client_id provided, attach it as metadata for webhook to link subscription
@@ -53,6 +79,8 @@ async def create_checkout_session(request: Request, db: AsyncSession = Depends(g
             # Reuse existing Stripe customer if we have one
             if client.stripe_customer_id:
                 checkout_params["customer"] = client.stripe_customer_id
+                # Can't use customer_creation with existing customer
+                del checkout_params["customer_creation"]
             elif client.contact_email:
                 checkout_params["customer_email"] = client.contact_email
 
@@ -72,7 +100,6 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
             raise HTTPException(status_code=400, detail="INVALID_SIGNATURE")
     else:
         # No webhook secret configured — parse payload directly (dev/test mode)
-        import json
         event = stripe.Event.construct_from(json.loads(payload), stripe.api_key)
 
     event_type = event["type"]
@@ -86,6 +113,7 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
         subscription_id = session.get("subscription")
 
         if client_id:
+            # Existing client — just link Stripe IDs
             await db.execute(
                 update(Client)
                 .where(Client.id == client_id)
@@ -99,6 +127,9 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
             )
             await db.commit()
             print(f"[STRIPE] Checkout completed: client={client_id} tier={tier} sub={subscription_id}")
+        else:
+            # New signup — auto-create client
+            await _handle_new_signup(db, session, tier, customer_id, subscription_id)
 
     elif event_type in (
         "customer.subscription.updated",
@@ -130,3 +161,98 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
             print(f"[STRIPE] Subscription {event_type}: client={client.id} status={status}")
 
     return {"received": True}
+
+
+async def _handle_new_signup(db, session, tier, customer_id, subscription_id):
+    """Auto-create a client record from Stripe checkout data."""
+    # Extract custom fields
+    custom_fields = session.get("custom_fields", [])
+    custom_data = {}
+    for field in custom_fields:
+        key = field.get("key", "")
+        text_val = field.get("text", {})
+        custom_data[key] = text_val.get("value", "") if isinstance(text_val, dict) else ""
+
+    business_name = custom_data.get("business_name", "").strip() or "New Business"
+    owner_name = custom_data.get("owner_name", "").strip() or "Owner"
+    owner_phone = custom_data.get("owner_phone", "").strip() or ""
+
+    # Get email from customer_details (collected by Stripe billing)
+    customer_details = session.get("customer_details", {})
+    owner_email = customer_details.get("email", "")
+
+    # Normalize phone — add +1 prefix if it looks like a US number
+    phone_digits = "".join(c for c in owner_phone if c.isdigit())
+    if len(phone_digits) == 10:
+        owner_phone = f"+1{phone_digits}"
+    elif len(phone_digits) == 11 and phone_digits.startswith("1"):
+        owner_phone = f"+{phone_digits}"
+    elif not owner_phone.startswith("+"):
+        owner_phone = f"+1{phone_digits}" if phone_digits else "+10000000000"
+
+    # Generate a random portal password (admin will send magic link later)
+    random_password = secrets.token_urlsafe(16)
+    password_hash = hash_password(random_password)
+
+    # Create client record
+    client = Client(
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow(),
+        business_name=business_name,
+        owner_name=owner_name,
+        owner_phone=owner_phone,
+        contact_email=owner_email,
+        industry="general",
+        twilio_number="pending",
+        status="pending_setup",
+        stripe_customer_id=customer_id,
+        stripe_subscription_id=subscription_id,
+        subscription_tier=tier,
+        subscription_status="active",
+        portal_password_hash=password_hash,
+    )
+    db.add(client)
+    await db.commit()
+    await db.refresh(client)
+
+    tier_label = TIER_LABELS.get(tier, tier)
+    print(f"[STRIPE] New signup created: client={client.id} business={business_name} tier={tier}")
+
+    # Send welcome email to customer
+    try:
+        await send_summary_email(
+            owner_email,
+            f"Welcome to FixMyNight — {tier_label} Plan",
+            f"Hi {owner_name},\n\n"
+            f"Welcome to FixMyNight! Your {tier_label} subscription is now active.\n\n"
+            f"Our team is setting up your after-hours line and will have everything "
+            f"ready within 24 hours. You'll receive your portal login credentials "
+            f"once setup is complete.\n\n"
+            f"If you have any questions in the meantime, reply to this email.\n\n"
+            f"— The FixMyNight Team",
+        )
+    except Exception as e:
+        print(f"[WARNING] Welcome email failed: {e}")
+
+    # Send admin notification
+    admin_email = os.environ.get("ADMIN_EMAIL", "")
+    if admin_email:
+        try:
+            await send_summary_email(
+                admin_email,
+                f"New FixMyNight Signup: {business_name} ({tier_label})",
+                f"New FixMyNight signup!\n\n"
+                f"Business: {business_name}\n"
+                f"Owner: {owner_name}\n"
+                f"Email: {owner_email}\n"
+                f"Phone: {owner_phone}\n"
+                f"Tier: {tier_label}\n"
+                f"Stripe Customer: {customer_id}\n\n"
+                f"Log into the admin portal to complete setup:\n"
+                f"- Assign a Twilio number\n"
+                f"- Configure business hours and settings\n"
+                f"- Create the Vapi assistant\n"
+                f"- Change status to 'active' to trigger portal invite\n",
+            )
+        except Exception as e:
+            print(f"[WARNING] Admin notification email failed: {e}")

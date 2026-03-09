@@ -232,6 +232,7 @@ class CallResponse(BaseModel):
     recording_url: Optional[str] = None
     flagged_urgent: bool
     requires_callback: bool
+    vapi_cost: Optional[Decimal] = None
     morning_summary_sent_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}

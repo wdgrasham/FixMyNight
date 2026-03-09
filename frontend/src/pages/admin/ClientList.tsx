@@ -8,7 +8,7 @@ import ErrorBanner from '../../components/ErrorBanner';
 import StatusBadge from '../../components/StatusBadge';
 import { formatPhoneDisplay } from '../../components/PhoneInput';
 
-type ClientListItem = Client & { on_call_tech?: string | null; calls_24h?: number; calls_7d?: number };
+type ClientListItem = Client & { on_call_tech?: string | null; calls_24h?: number; calls_7d?: number; cost_mtd?: number };
 
 export default function ClientList() {
   const [clients, setClients] = useState<ClientListItem[]>([]);
@@ -53,6 +53,7 @@ export default function ClientList() {
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Twilio Number</th>
               <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">24h</th>
               <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">7d</th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Cost (MTD)</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">On-Call</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
             </tr>
@@ -60,7 +61,7 @@ export default function ClientList() {
           <tbody className="divide-y divide-gray-100">
             {clients.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-sm text-gray-500">
+                <td colSpan={9} className="px-4 py-8 text-center text-sm text-gray-500">
                   No clients yet. <Link to={ROUTES.ADMIN_CLIENT_NEW} className="text-[#F59E0B] underline">Create one</Link>.
                 </td>
               </tr>
@@ -79,6 +80,7 @@ export default function ClientList() {
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-700 text-right">{client.calls_24h ?? 0}</td>
                   <td className="px-4 py-3 text-sm text-gray-700 text-right">{client.calls_7d ?? 0}</td>
+                  <td className="px-4 py-3 text-sm text-gray-700 text-right">${(client.cost_mtd ?? 0).toFixed(2)}</td>
                   <td className="px-4 py-3 text-sm">
                     {client.on_call_tech
                       ? <span className="text-green-600">{client.on_call_tech}</span>

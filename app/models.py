@@ -90,6 +90,7 @@ class Call(Base):
     call_ended_at = Column(DateTime(timezone=True))
     duration_seconds = Column(Integer)
     recording_url = Column(String)
+    vapi_cost = Column(DECIMAL(10, 4))
     morning_summary_sent_at = Column(DateTime(timezone=True))
     flagged_urgent = Column(Boolean, nullable=False, default=False)
     requires_callback = Column(Boolean, nullable=False, default=True)

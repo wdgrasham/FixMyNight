@@ -214,6 +214,10 @@ async def vapi_intake(request: Request, db: AsyncSession = Depends(get_db)):
         transcript = artifact.get("transcript", "")
         recording_url = artifact.get("recordingUrl") or call_data.get("recordingUrl") or msg.get("recordingUrl")
 
+        # Vapi cost from costBreakdown.total (USD)
+        cost_breakdown = call_data.get("costBreakdown", {})
+        vapi_cost = cost_breakdown.get("total") if cost_breakdown else None
+
         # Call timing from Vapi
         started_at_str = call_data.get("startedAt")
         ended_at_str = call_data.get("endedAt")
@@ -308,6 +312,7 @@ async def vapi_intake(request: Request, db: AsyncSession = Depends(get_db)):
             existing_call.call_ended_at = call_ended_at
             existing_call.duration_seconds = duration_seconds
             existing_call.recording_url = recording_url
+            existing_call.vapi_cost = vapi_cost
             existing_call.caller_name = extracted.get("caller_name") or existing_call.caller_name
             existing_call.caller_phone = caller_phone_final or existing_call.caller_phone
             existing_call.issue_summary = extracted.get("issue_summary") or existing_call.issue_summary
@@ -346,6 +351,7 @@ async def vapi_intake(request: Request, db: AsyncSession = Depends(get_db)):
                 call_ended_at=call_ended_at,
                 duration_seconds=duration_seconds,
                 recording_url=recording_url,
+                vapi_cost=vapi_cost,
             )
 
         await write_audit_log(
@@ -692,6 +698,7 @@ async def _log_call_record(
     call_ended_at=None,
     duration_seconds=None,
     recording_url=None,
+    vapi_cost=None,
 ):
     """Create a Call record with all fields properly populated."""
     is_emergency = params.get("is_emergency", False)
@@ -730,6 +737,7 @@ async def _log_call_record(
         recording_url=recording_url,
         flagged_urgent=flagged_urgent,
         requires_callback=requires_callback,
+        vapi_cost=vapi_cost,
     )
     db.add(call)
     await db.commit()

@@ -28,6 +28,10 @@ async def lifespan(app: FastAPI):
             "  updated_at TIMESTAMPTZ DEFAULT NOW()"
             ")"
         ))
+        # Add vapi_cost column if it doesn't exist yet
+        await conn.execute(text(
+            "ALTER TABLE calls ADD COLUMN IF NOT EXISTS vapi_cost DECIMAL(10,4)"
+        ))
 
     # Startup: start cron scheduler
     scheduler.add_job(morning_summary_job, "interval", minutes=1, id="morning_summary")

@@ -8,6 +8,8 @@ export const ROUTES = {
   SMS_PROGRAM: '/sms',
   FIXMYNIGHT_PRODUCT: '/fixmynight',
   ADMIN_LOGIN: '/fixmynight/admin',
+  ADMIN_FORGOT_PASSWORD: '/fixmynight/admin/forgot-password',
+  ADMIN_RESET_PASSWORD: '/fixmynight/admin/reset-password',
   ADMIN_DASHBOARD: '/fixmynight/admin/dashboard',
   ADMIN_CLIENTS: '/fixmynight/admin/clients',
   ADMIN_CLIENT_NEW: '/fixmynight/admin/clients/new',

@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 
 from ..database import get_db
-from ..models import Client
+from ..models import Client, SystemSetting
 from ..schemas import (
     AdminLoginRequest,
     PortalLoginRequest,
@@ -19,6 +19,8 @@ from ..auth import (
     create_portal_token,
     create_magic_link_token,
     validate_magic_link_token,
+    create_admin_reset_token,
+    validate_admin_reset_token,
     verify_password,
     hash_password,
 )
@@ -37,7 +39,12 @@ async def admin_login(
     payload: AdminLoginRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    stored_hash = os.environ["ADMIN_PASSWORD_HASH"]
+    # Check DB override first (from admin password reset), fall back to env var
+    db_hash_result = await db.execute(
+        select(SystemSetting).where(SystemSetting.key == "admin_password_hash")
+    )
+    db_hash_setting = db_hash_result.scalar_one_or_none()
+    stored_hash = db_hash_setting.value if db_hash_setting else os.environ["ADMIN_PASSWORD_HASH"]
     if not verify_password(payload.password, stored_hash):
         await write_audit_log(
             db,
@@ -220,3 +227,81 @@ async def forgot_password(
         metadata={"email": payload.email},
     )
     return {"status": "sent"}
+
+
+@router.post("/admin-forgot-password")
+@limiter.limit("3/15minutes")
+async def admin_forgot_password(
+    request: Request,
+    payload: ForgotPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Send admin password reset link. Always returns success to prevent enumeration."""
+    admin_email = os.environ.get("ADMIN_EMAIL")
+    if not admin_email or payload.email.lower() != admin_email.lower():
+        return {"status": "sent"}
+
+    token = create_admin_reset_token()
+    frontend_url = os.environ.get("FRONTEND_URL", "https://fixmyday.ai")
+    link = f"{frontend_url}/fixmynight/admin/reset-password?token={token}"
+    await send_summary_email(
+        to_email=admin_email,
+        subject="FixMyNight — Reset Your Admin Password",
+        body=(
+            "Hi,\n\n"
+            "We received a request to reset your FixMyNight admin password.\n\n"
+            f"Click below to set a new password:\n{link}\n\n"
+            "This link expires in 1 hour. If you didn't request this, "
+            "you can safely ignore this email.\n\n"
+            "— FixMyNight"
+        ),
+    )
+    await write_audit_log(
+        db,
+        "auth.admin_forgot_password",
+        "admin",
+        metadata={"email": payload.email},
+    )
+    return {"status": "sent"}
+
+
+@router.post("/admin-set-password")
+async def admin_set_password(
+    payload: SetPasswordRequest, db: AsyncSession = Depends(get_db)
+):
+    """Set new admin password from reset token."""
+    validate_admin_reset_token(payload.token)
+    hashed = hash_password(payload.password)
+
+    # Upsert into system_settings
+    existing = await db.execute(
+        select(SystemSetting).where(SystemSetting.key == "admin_password_hash")
+    )
+    setting = existing.scalar_one_or_none()
+    if setting:
+        setting.value = hashed
+        setting.updated_at = datetime.utcnow()
+    else:
+        db.add(SystemSetting(
+            key="admin_password_hash",
+            value=hashed,
+            updated_at=datetime.utcnow(),
+        ))
+    await db.commit()
+
+    token = create_admin_token()
+    await write_audit_log(
+        db,
+        "auth.admin_password_reset",
+        "admin",
+        metadata={"method": "reset_link"},
+    )
+    return {"access_token": token, "token_type": "bearer"}
+
+
+@router.post("/verify-admin-reset-token")
+async def verify_admin_reset_token_endpoint(payload: dict):
+    """Verify an admin reset token without consuming it."""
+    token = payload.get("token", "")
+    validate_admin_reset_token(token)
+    return {"valid": True}

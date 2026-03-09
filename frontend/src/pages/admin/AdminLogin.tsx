@@ -108,6 +108,12 @@ export default function AdminLogin() {
                 {loading ? 'Signing in...' : 'Sign In'}
               </button>
             </form>
+
+            <p className="mt-4 text-xs text-[#64748B] text-center">
+              <Link to={ROUTES.ADMIN_FORGOT_PASSWORD} className="text-[#F59E0B] hover:text-[#D97706] transition-colors">
+                Forgot password?
+              </Link>
+            </p>
           </div>
 
           <p className="mt-6 text-center text-xs text-[#64748B]">

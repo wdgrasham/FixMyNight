@@ -120,6 +120,13 @@ class AuditLog(Base):
     client_id = Column(UUID(as_uuid=True), ForeignKey("clients.id"))
 
 
+class SystemSetting(Base):
+    __tablename__ = "system_settings"
+    key = Column(String, primary_key=True)
+    value = Column(String, nullable=False)
+    updated_at = Column(DateTime(timezone=True))
+
+
 class CronLog(Base):
     __tablename__ = "cron_log"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

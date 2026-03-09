@@ -13,6 +13,8 @@ import Contact from './pages/public/Contact';
 import CaseEvaluation from './pages/public/CaseEvaluation';
 
 import AdminLogin from './pages/admin/AdminLogin';
+import AdminForgotPassword from './pages/admin/AdminForgotPassword';
+import AdminResetPassword from './pages/admin/AdminResetPassword';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import ClientList from './pages/admin/ClientList';
 import ClientNew from './pages/admin/ClientNew';
@@ -51,6 +53,8 @@ export default function App() {
 
         {/* Admin auth */}
         <Route path="/fixmynight/admin" element={<AdminLogin />} />
+        <Route path="/fixmynight/admin/forgot-password" element={<AdminForgotPassword />} />
+        <Route path="/fixmynight/admin/reset-password" element={<AdminResetPassword />} />
 
         {/* Admin protected routes */}
         <Route

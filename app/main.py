@@ -10,12 +10,25 @@ from .limiter import limiter
 from .routers import auth, admin, portal, webhooks, sms
 from .cron.morning_summary import morning_summary_job
 from .cron.oncall_reminder import oncall_reminder_job
+from .database import engine
+from .models import SystemSetting
 
 scheduler = AsyncIOScheduler()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Ensure system_settings table exists (added for admin password reset)
+    from sqlalchemy import text
+    async with engine.begin() as conn:
+        await conn.execute(text(
+            "CREATE TABLE IF NOT EXISTS system_settings ("
+            "  key TEXT PRIMARY KEY,"
+            "  value TEXT NOT NULL,"
+            "  updated_at TIMESTAMPTZ DEFAULT NOW()"
+            ")"
+        ))
+
     # Startup: start cron scheduler
     scheduler.add_job(morning_summary_job, "interval", minutes=1, id="morning_summary")
     scheduler.add_job(oncall_reminder_job, "interval", minutes=1, id="oncall_reminder")

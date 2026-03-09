@@ -140,7 +140,9 @@ export default function PortalEntry() {
             </form>
 
             <p className="mt-4 text-xs text-[#64748B] text-center">
-              Forgot password? Contact your FixMyNight administrator.
+              <Link to={ROUTES.PORTAL_FORGOT_PASSWORD} className="text-[#F59E0B] hover:text-[#D97706] transition-colors">
+                Forgot password?
+              </Link>
             </p>
           </div>
 

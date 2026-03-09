@@ -2,10 +2,112 @@
 
 import httpx
 import os
-from sqlalchemy import select
-from ..models import Client
+from sqlalchemy import select, text
+from ..models import Client, SystemSetting
 
 VAPI_BASE_URL = "https://api.vapi.ai"
+
+# ---------------------------------------------------------------------------
+# Generic fallback assistant — used when the assistant-request webhook fails
+# (e.g. Railway outage). No transfers, no client-specific data.
+# ---------------------------------------------------------------------------
+
+FALLBACK_FIRST_MESSAGE = (
+    "Thank you for calling. This is Sarah, your after-hours answering service. "
+    "This call may be recorded for quality purposes. "
+    "How can I help you tonight?"
+)
+
+FALLBACK_SYSTEM_PROMPT = """You are Sarah, an after-hours AI answering service assistant.
+
+YOUR ROLE:
+You answer after-hours calls professionally. You collect caller information and ensure their message reaches the business team. You do NOT transfer calls, dispatch technicians, or diagnose issues.
+
+---
+
+OPENING:
+Your first message (already spoken by the system) asks the caller how you can help. Listen to their response and follow the appropriate flow below.
+
+---
+
+EMERGENCY FLOW:
+If the caller describes an emergency, says they need someone tonight, or expresses urgency:
+"I understand this is urgent. I've noted this as an emergency and our team will be notified right away. Dispatch fees may apply for after-hours emergency service."
+
+Collect: name, callback number, brief description of the issue.
+Read back their number to confirm.
+
+"I've flagged this as urgent and our team will reach out to you as soon as possible. Have a good night."
+
+Do NOT attempt any call transfers.
+
+---
+
+NON-EMERGENCY / MESSAGE FLOW:
+If the caller has a routine matter or wants to leave a message:
+"Of course, go ahead — I'm listening."
+
+Let the caller speak freely. Do NOT interrupt them.
+
+When they're done:
+"Got it. Let me just get your name and a callback number so we can reach you."
+
+Collect: name, callback number.
+Read back their number to confirm.
+
+"I'll make sure the team gets your message first thing in the morning. Have a good night."
+
+---
+
+WRONG NUMBER:
+"I'm sorry, it looks like you may have the wrong number. This is an after-hours answering service. I hope you find who you're looking for. Goodnight."
+
+---
+
+RETURN CALL HANDLING:
+If the caller says they got a missed call from this number:
+"This is an after-hours answering service. If someone from the team called you, they'll be available during business hours. Would you like to leave a message?"
+Then follow the message flow.
+
+---
+
+SILENCE / NO RESPONSE:
+If the caller goes silent after the greeting:
+"Are you still there?"
+Wait 5 seconds. If still silent:
+"It seems like we got disconnected. If you need help, please call us back. Goodnight."
+
+---
+
+PHONE NUMBER VERIFICATION:
+After the caller gives you a phone number, always read back the exact digits to confirm.
+"I have your number as 7 1 3, 8 5 5, 0 4 4 7 — is that correct?"
+
+If the number doesn't sound complete:
+"Could you repeat the full 10-digit number for me?"
+
+---
+
+ENDING THE CALL:
+Every closing message ends with "Have a good night" or "Goodnight." The system will automatically end the call when you say those words.
+
+Rules:
+- Say your closing message with NO filler.
+- Do NOT pause or wait after your closing line.
+- Do NOT say anything after "Have a good night" or "Goodnight."
+- Never add follow-up questions after a closing.
+
+---
+
+WHAT YOU NEVER DO:
+- Never attempt to transfer calls
+- Never mention specific technician names or phone numbers
+- Never diagnose problems
+- Never promise arrival times or specific technicians
+- Never engage in topics unrelated to the service call
+- Never use DTMF prompts ("Press 1 for...")
+- Never skip collecting caller name and phone number
+- Never reveal that you are an AI unless directly and sincerely asked""".strip()
 
 
 def _get_vapi_tools(transfer_destination: str = None):
@@ -228,7 +330,16 @@ async def rebuild_vapi_assistant(client_id: str, db):
 async def import_twilio_number_to_vapi(
     twilio_number: str, assistant_id: str
 ) -> str:
-    """Import a Twilio number into Vapi and link to assistant. Returns vapi phone number ID."""
+    """Import a Twilio number into Vapi and link to assistant. Returns vapi phone number ID.
+
+    The assistantId on the phone number serves as the fallback when the
+    assistant-request webhook fails. We prefer using the generic fallback
+    assistant so callers always hear Sarah, even during a backend outage.
+    If no fallback exists yet, we fall back to the client-specific assistant.
+    """
+    # Try to use the generic fallback assistant as the phone number's assistantId
+    fallback_id = os.environ.get("VAPI_FALLBACK_ASSISTANT_ID") or assistant_id
+
     async with httpx.AsyncClient() as http:
         r = await http.post(
             f"{VAPI_BASE_URL}/phone-number",
@@ -238,7 +349,7 @@ async def import_twilio_number_to_vapi(
                 "number": twilio_number,
                 "twilioAccountSid": os.environ["TWILIO_ACCOUNT_SID"],
                 "twilioAuthToken": os.environ["TWILIO_AUTH_TOKEN"],
-                "assistantId": assistant_id,
+                "assistantId": fallback_id,
                 "serverUrl": os.environ.get("VAPI_SERVER_URL", ""),
             },
         )
@@ -253,3 +364,121 @@ async def delete_vapi_assistant(assistant_id: str):
             f"{VAPI_BASE_URL}/assistant/{assistant_id}",
             headers=_vapi_headers(),
         )
+
+
+# ---------------------------------------------------------------------------
+# Fallback assistant lifecycle
+# ---------------------------------------------------------------------------
+
+
+async def create_fallback_assistant() -> str:
+    """Create the generic fallback assistant in Vapi. Returns assistant ID."""
+    async with httpx.AsyncClient() as http:
+        r = await http.post(
+            f"{VAPI_BASE_URL}/assistant",
+            headers=_vapi_headers(),
+            json={
+                "name": "Sarah — Fallback (Generic)",
+                "firstMessage": FALLBACK_FIRST_MESSAGE,
+                "firstMessageMode": "assistant-speaks-first",
+                "model": {
+                    "provider": "openai",
+                    "model": "gpt-4o",
+                    "messages": [
+                        {"role": "system", "content": FALLBACK_SYSTEM_PROMPT},
+                    ],
+                    "temperature": 0.3,
+                },
+                "voice": {
+                    "provider": "11labs",
+                    "voiceId": "sarah",
+                    "stability": 0.5,
+                    "similarityBoost": 0.75,
+                },
+                "transcriber": {
+                    "provider": "deepgram",
+                    "model": "nova-2",
+                    "language": "en-US",
+                },
+                "maxDurationSeconds": 600,
+                "silenceTimeoutSeconds": 30,
+                "endCallFunctionEnabled": True,
+                "endCallPhrases": ["Have a good night", "Goodnight"],
+                "backgroundDenoisingEnabled": True,
+                "serverUrl": os.environ.get("VAPI_SERVER_URL", ""),
+                "serverUrlSecret": os.environ.get("VAPI_WEBHOOK_SECRET", ""),
+            },
+        )
+        r.raise_for_status()
+        return r.json()["id"]
+
+
+async def _update_fallback_assistant(assistant_id: str):
+    """Sync the fallback assistant's prompt (keeps it up-to-date on redeploys)."""
+    async with httpx.AsyncClient() as http:
+        r = await http.patch(
+            f"{VAPI_BASE_URL}/assistant/{assistant_id}",
+            headers=_vapi_headers(),
+            json={
+                "name": "Sarah — Fallback (Generic)",
+                "firstMessage": FALLBACK_FIRST_MESSAGE,
+                "firstMessageMode": "assistant-speaks-first",
+                "model": {
+                    "provider": "openai",
+                    "model": "gpt-4o",
+                    "messages": [
+                        {"role": "system", "content": FALLBACK_SYSTEM_PROMPT},
+                    ],
+                    "temperature": 0.3,
+                },
+                "endCallPhrases": ["Have a good night", "Goodnight"],
+            },
+        )
+        r.raise_for_status()
+
+
+async def update_phone_number_fallback(vapi_phone_number_id: str, fallback_assistant_id: str):
+    """Set a Vapi phone number's assistantId to the fallback assistant.
+
+    When our serverUrl webhook works, it returns dynamic config (overrides this).
+    When the webhook fails, Vapi falls back to this assistantId.
+    """
+    async with httpx.AsyncClient() as http:
+        r = await http.patch(
+            f"{VAPI_BASE_URL}/phone-number/{vapi_phone_number_id}",
+            headers=_vapi_headers(),
+            json={
+                "assistantId": fallback_assistant_id,
+            },
+        )
+        r.raise_for_status()
+
+
+async def ensure_fallback_assistant(db) -> str:
+    """Ensure the fallback assistant exists and is up-to-date. Returns its ID.
+
+    Checks system_settings for an existing ID. If not found, creates one.
+    Always syncs the prompt so code changes propagate on next deploy.
+    """
+    result = await db.execute(
+        select(SystemSetting).where(SystemSetting.key == "vapi_fallback_assistant_id")
+    )
+    setting = result.scalar_one_or_none()
+
+    if setting and setting.value:
+        try:
+            await _update_fallback_assistant(setting.value)
+            print(f"[VAPI] Fallback assistant synced: {setting.value}")
+        except Exception as e:
+            print(f"[WARNING] Failed to sync fallback assistant: {e}")
+        return setting.value
+
+    # Create new fallback assistant
+    assistant_id = await create_fallback_assistant()
+    await db.execute(text(
+        "INSERT INTO system_settings (key, value) VALUES (:key, :value) "
+        "ON CONFLICT (key) DO UPDATE SET value = :value"
+    ), {"key": "vapi_fallback_assistant_id", "value": assistant_id})
+    await db.commit()
+    print(f"[VAPI] Fallback assistant created: {assistant_id}")
+    return assistant_id

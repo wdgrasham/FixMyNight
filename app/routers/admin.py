@@ -592,3 +592,34 @@ async def service_status(
 ):
     """Return health and billing status for all external services."""
     return await get_all_service_status(force_refresh=refresh)
+
+
+@router.get("/fallback-status")
+async def fallback_status(
+    admin=Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return the current Vapi fallback assistant configuration."""
+    from ..models import SystemSetting
+    result = await db.execute(
+        select(SystemSetting).where(SystemSetting.key == "vapi_fallback_assistant_id")
+    )
+    setting = result.scalar_one_or_none()
+    fallback_id = setting.value if setting else None
+
+    # Check which clients have phone numbers
+    clients_result = await db.execute(
+        select(Client.id, Client.business_name, Client.vapi_phone_number_id).where(
+            Client.vapi_phone_number_id.isnot(None),
+            Client.status == "active",
+        )
+    )
+    phones = [
+        {"client_id": str(r[0]), "business_name": r[1], "vapi_phone_number_id": r[2]}
+        for r in clients_result
+    ]
+
+    return {
+        "fallback_assistant_id": fallback_id,
+        "active_phone_numbers": phones,
+    }

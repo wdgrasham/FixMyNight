@@ -12,10 +12,42 @@ from .cron.morning_summary import morning_summary_job
 from .cron.oncall_reminder import oncall_reminder_job
 from .cron.monthly_billing_summary import monthly_billing_summary_job
 from .cron.overage_reporting import overage_reporting_job
-from .database import engine
-from .models import SystemSetting
+from .database import engine, AsyncSessionLocal
+from .models import SystemSetting, Client
 
 scheduler = AsyncIOScheduler()
+
+
+async def _setup_fallback_assistant():
+    """Ensure the generic Vapi fallback assistant exists and all active phone
+    numbers use it as their assistantId. When our webhook works, it overrides
+    with dynamic config. When the webhook fails (outage), callers hear the
+    generic fallback Sarah instead of silence."""
+    from sqlalchemy import select as sa_select
+    from .services.vapi import ensure_fallback_assistant, update_phone_number_fallback
+
+    try:
+        async with AsyncSessionLocal() as db:
+            fallback_id = await ensure_fallback_assistant(db)
+
+            result = await db.execute(
+                sa_select(Client).where(
+                    Client.vapi_phone_number_id.isnot(None),
+                    Client.status == "active",
+                )
+            )
+            clients = result.scalars().all()
+            for client in clients:
+                try:
+                    await update_phone_number_fallback(
+                        client.vapi_phone_number_id, fallback_id
+                    )
+                except Exception as e:
+                    print(f"[WARNING] Failed to set fallback on phone {client.vapi_phone_number_id}: {e}")
+
+            print(f"[INFO] Vapi fallback assistant ready ({fallback_id}), {len(clients)} phone number(s) updated")
+    except Exception as e:
+        print(f"[WARNING] Fallback assistant setup failed (non-fatal): {e}")
 
 
 @asynccontextmanager
@@ -103,6 +135,10 @@ async def lifespan(app: FastAPI):
     scheduler.add_job(overage_reporting_job, "cron", hour=9, minute=0, id="overage_reporting")
     scheduler.start()
     print("[INFO] APScheduler started — morning_summary + oncall_reminder + monthly_billing_summary + overage_reporting jobs running")
+
+    # Ensure Vapi fallback assistant exists and all phone numbers use it
+    await _setup_fallback_assistant()
+
     yield
     # Shutdown
     scheduler.shutdown()

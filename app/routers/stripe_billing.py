@@ -39,8 +39,8 @@ async def create_checkout_session(request: Request, db: AsyncSession = Depends(g
         "mode": "subscription",
         "payment_method_types": ["card"],
         "line_items": [{"price": price_id, "quantity": 1}],
-        "success_url": f"{frontend_url}/fixmynight/pricing?success=true",
-        "cancel_url": f"{frontend_url}/fixmynight/pricing?canceled=true",
+        "success_url": f"{frontend_url}/fixmynight?checkout=success#pricing",
+        "cancel_url": f"{frontend_url}/fixmynight?checkout=canceled#pricing",
         "metadata": {"tier": PRICE_TO_TIER[price_id]},
     }
 

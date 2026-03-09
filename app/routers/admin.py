@@ -23,6 +23,7 @@ from ..services.vapi import rebuild_vapi_assistant
 from ..services.twilio_service import send_verification_sms, send_sms
 from ..services.onboarding import provision_client
 from ..services.email_service import send_summary_email
+from ..services.service_monitor import get_all_service_status
 from ..auth import create_magic_link_token
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
@@ -563,3 +564,12 @@ async def reactivate_technician(
         metadata={"tech_id": str(tech.id), "tech_name": tech.name},
     )
     return TechnicianResponse.model_validate(tech)
+
+
+@router.get("/service-status")
+async def service_status(
+    admin=Depends(require_admin),
+    refresh: bool = Query(False),
+):
+    """Return health and billing status for all external services."""
+    return await get_all_service_status(force_refresh=refresh)

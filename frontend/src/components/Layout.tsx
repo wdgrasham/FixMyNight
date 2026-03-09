@@ -25,6 +25,7 @@ export default function Layout({ variant }: Props) {
     ? [
         { to: ROUTES.ADMIN_DASHBOARD, label: 'Dashboard' },
         { to: ROUTES.ADMIN_CLIENTS, label: 'Clients' },
+        { to: ROUTES.ADMIN_SERVICES, label: 'Services' },
       ]
     : clientId
       ? [

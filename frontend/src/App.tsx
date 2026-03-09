@@ -20,6 +20,7 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import ClientList from './pages/admin/ClientList';
 import ClientNew from './pages/admin/ClientNew';
 import ClientDetail from './pages/admin/ClientDetail';
+import AdminServices from './pages/admin/AdminServices';
 
 import PortalEntry from './pages/portal/PortalEntry';
 import PortalSetup from './pages/portal/PortalSetup';
@@ -70,6 +71,7 @@ export default function App() {
           <Route path="/fixmynight/admin/clients" element={<ClientList />} />
           <Route path="/fixmynight/admin/clients/new" element={<ClientNew />} />
           <Route path="/fixmynight/admin/clients/:id" element={<ClientDetail />} />
+          <Route path="/fixmynight/admin/services" element={<AdminServices />} />
         </Route>
 
         {/* Portal auth */}

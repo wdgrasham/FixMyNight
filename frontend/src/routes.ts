@@ -15,6 +15,7 @@ export const ROUTES = {
   ADMIN_CLIENTS: '/fixmynight/admin/clients',
   ADMIN_CLIENT_NEW: '/fixmynight/admin/clients/new',
   ADMIN_CLIENT_DETAIL: (id: string) => `/fixmynight/admin/clients/${id}`,
+  ADMIN_SERVICES: '/fixmynight/admin/services',
   PORTAL_ENTRY: '/fixmynight/portal',
   PORTAL_SETUP: '/fixmynight/portal/setup',
   PORTAL_FORGOT_PASSWORD: '/fixmynight/portal/forgot-password',

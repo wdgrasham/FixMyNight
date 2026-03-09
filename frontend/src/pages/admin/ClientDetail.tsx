@@ -30,6 +30,12 @@ export default function ClientDetail() {
   const [editData, setEditData] = useState<Partial<Client>>({});
   const [vapiNotice, setVapiNotice] = useState(false);
 
+  // Cost stats
+  const [costStats, setCostStats] = useState<{
+    current_month: { label: string; total_calls: number; total_minutes: number; total_cost: number };
+    previous_month: { label: string; total_calls: number; total_minutes: number; total_cost: number };
+  } | null>(null);
+
   // New tech form
   const [newTechName, setNewTechName] = useState('');
   const [newTechPhone, setNewTechPhone] = useState('');
@@ -45,13 +51,15 @@ export default function ClientDetail() {
 
   const loadData = async () => {
     try {
-      const [clientData, techData] = await Promise.all([
+      const [clientData, techData, costData] = await Promise.all([
         api<Client>(`/api/v1/admin/clients/${id}`),
         api<Technician[]>(`/api/v1/admin/clients/${id}/technicians`),
+        api<typeof costStats>(`/api/v1/admin/clients/${id}/cost-stats`).catch(() => null),
       ]);
       setClient(clientData);
       setTechs(techData);
       setEditData(clientData);
+      if (costData) setCostStats(costData);
     } catch {
       setError('Failed to load client data.');
     } finally {
@@ -415,6 +423,34 @@ export default function ClientDetail() {
           )}
         </div>
       </div>
+
+      {/* Cost Stats */}
+      {costStats && (
+        <div className="mt-6 bg-white rounded-lg border border-gray-200 p-6">
+          <h2 className="text-lg font-medium text-gray-900 mb-4">Vapi Usage & Cost</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {[costStats.current_month, costStats.previous_month].map((month) => (
+              <div key={month.label}>
+                <h3 className="text-sm font-medium text-gray-700 mb-3">{month.label}</h3>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="bg-gray-50 rounded-lg p-3 text-center">
+                    <p className="text-2xl font-semibold text-gray-900">{month.total_calls}</p>
+                    <p className="text-xs text-gray-500 mt-1">Calls</p>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-3 text-center">
+                    <p className="text-2xl font-semibold text-gray-900">{month.total_minutes}</p>
+                    <p className="text-xs text-gray-500 mt-1">Minutes</p>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-3 text-center">
+                    <p className="text-2xl font-semibold text-gray-900">${month.total_cost.toFixed(2)}</p>
+                    <p className="text-xs text-gray-500 mt-1">Vapi Cost</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Technicians */}
       <div className="mt-6 bg-white rounded-lg border border-gray-200 p-6">

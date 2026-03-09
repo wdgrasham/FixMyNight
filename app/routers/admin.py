@@ -115,6 +115,54 @@ async def list_clients(
     return response
 
 
+@router.get("/clients/{client_id}/cost-stats")
+async def get_client_cost_stats(
+    client_id: str,
+    admin=Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return call count, total minutes, and total Vapi cost for current and previous month."""
+    now = datetime.utcnow()
+    current_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    if current_month_start.month == 1:
+        prev_month_start = current_month_start.replace(year=current_month_start.year - 1, month=12)
+    else:
+        prev_month_start = current_month_start.replace(month=current_month_start.month - 1)
+
+    async def _stats_for_range(start, end):
+        result = await db.execute(
+            select(
+                func.count(),
+                func.coalesce(func.sum(Call.duration_seconds), 0),
+                func.coalesce(func.sum(Call.vapi_cost), 0),
+            ).where(
+                Call.client_id == client_id,
+                Call.created_at >= start,
+                Call.created_at < end,
+            )
+        )
+        row = result.one()
+        return {
+            "total_calls": row[0],
+            "total_minutes": round(float(row[1]) / 60, 1),
+            "total_cost": round(float(row[2]), 2),
+        }
+
+    current = await _stats_for_range(current_month_start, now)
+    previous = await _stats_for_range(prev_month_start, current_month_start)
+
+    return {
+        "current_month": {
+            "label": now.strftime("%B %Y"),
+            **current,
+        },
+        "previous_month": {
+            "label": prev_month_start.strftime("%B %Y"),
+            **previous,
+        },
+    }
+
+
 @router.post("/clients", response_model=ClientResponse)
 async def create_client(
     payload: ClientCreate,

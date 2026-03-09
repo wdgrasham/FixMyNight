@@ -65,9 +65,7 @@ async def create_checkout_session(request: Request, db: AsyncSession = Depends(g
                 "type": "text",
             },
         ],
-        # Collect email via billing details
-        "customer_creation": "always",
-        "billing_address_collection": "auto",
+        # In subscription mode, Stripe always creates a customer and collects email
     }
 
     # If client_id provided, attach it as metadata for webhook to link subscription
@@ -79,8 +77,6 @@ async def create_checkout_session(request: Request, db: AsyncSession = Depends(g
             # Reuse existing Stripe customer if we have one
             if client.stripe_customer_id:
                 checkout_params["customer"] = client.stripe_customer_id
-                # Can't use customer_creation with existing customer
-                del checkout_params["customer_creation"]
             elif client.contact_email:
                 checkout_params["customer_email"] = client.contact_email
 

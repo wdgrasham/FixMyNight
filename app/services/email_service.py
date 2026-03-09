@@ -14,3 +14,15 @@ async def send_summary_email(to_email: str, subject: str, body: str):
     )
     sg = SendGridAPIClient(os.environ["SENDGRID_API_KEY"])
     await asyncio.to_thread(sg.send, message)
+
+
+async def send_html_email(to_email: str, subject: str, html_body: str):
+    """Send an HTML email via SendGrid."""
+    message = Mail(
+        from_email=os.environ["SENDGRID_FROM_EMAIL"],
+        to_emails=to_email,
+        subject=subject,
+        html_content=html_body,
+    )
+    sg = SendGridAPIClient(os.environ["SENDGRID_API_KEY"])
+    await asyncio.to_thread(sg.send, message)

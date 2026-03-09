@@ -44,6 +44,8 @@ class Client(Base):
     stripe_subscription_id = Column(String, unique=True)
     subscription_tier = Column(String)
     subscription_status = Column(String)
+    avg_job_value = Column(DECIMAL(10, 2), default=250.00)
+    last_monthly_summary_sent_date = Column(Date)
 
 
 class Technician(Base):

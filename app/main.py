@@ -10,6 +10,7 @@ from .limiter import limiter
 from .routers import auth, admin, portal, webhooks, sms, stripe_billing
 from .cron.morning_summary import morning_summary_job
 from .cron.oncall_reminder import oncall_reminder_job
+from .cron.monthly_billing_summary import monthly_billing_summary_job
 from .database import engine
 from .models import SystemSetting
 
@@ -37,12 +38,20 @@ async def lifespan(app: FastAPI):
             await conn.execute(text(
                 f"ALTER TABLE clients ADD COLUMN IF NOT EXISTS {col} TEXT"
             ))
+        # Add monthly billing summary columns
+        await conn.execute(text(
+            "ALTER TABLE clients ADD COLUMN IF NOT EXISTS avg_job_value DECIMAL(10,2) DEFAULT 250.00"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE clients ADD COLUMN IF NOT EXISTS last_monthly_summary_sent_date DATE"
+        ))
 
     # Startup: start cron scheduler
     scheduler.add_job(morning_summary_job, "interval", minutes=1, id="morning_summary")
     scheduler.add_job(oncall_reminder_job, "interval", minutes=1, id="oncall_reminder")
+    scheduler.add_job(monthly_billing_summary_job, "cron", hour=10, minute=0, id="monthly_billing_summary")
     scheduler.start()
-    print("[INFO] APScheduler started — morning_summary + oncall_reminder jobs running")
+    print("[INFO] APScheduler started — morning_summary + oncall_reminder + monthly_billing_summary jobs running")
     yield
     # Shutdown
     scheduler.shutdown()

@@ -8,7 +8,7 @@ import {
   ShieldCheck, FileText, Scale,
 } from 'lucide-react';
 
-const API_BASE = import.meta.env.VITE_API_URL || '';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
 /* ─── Navbar ─── */
 function Navbar() {
@@ -315,10 +315,12 @@ function PricingSection() {
       const data = await res.json();
       if (data.url) {
         window.location.href = data.url;
+        return;
       }
     } catch {
-      setLoadingTier(null);
+      // fall through
     }
+    setLoadingTier(null);
   };
 
   return (

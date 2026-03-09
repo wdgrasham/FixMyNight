@@ -147,7 +147,7 @@ Complete each phase fully before starting the next.
 <!-- UPDATE THIS SECTION AT THE END OF EVERY SESSION -->
 <!-- Be specific — what files exist, what endpoints work, what's been tested -->
 
-**Last updated:** 2026-03-04
+**Last updated:** 2026-03-08
 
 **Pre-Phase: Spec Audit:** [X] Complete
 Notes: V1.5 cross-document audit completed (49 issues). V1.6 changes applied:
@@ -180,13 +180,25 @@ for full deployment log.
 Notes: Admin portal and client portal built and deployed to Vercel at fixmyday.ai/fixmynight/.
 Admin login, client list, onboarding form, client detail, portal login, dashboard, calls,
 settings, and team pages all implemented. Wired to Railway backend API.
+PWA manifest and service worker added. Client portal link on product page.
 
-**Phase 5 — Wire & Test:** [ ] Not started
-Notes:
+**Phase 5 — Wire & Test:** [~] In Progress
+Notes (updated 2026-03-08):
+- SMS webhook: signature validation fixed (reverse proxy URL reconstruction), ON/OFF/STATUS all pass
+- A2P 10DLC: /sms compliance page deployed, campaign resubmitted (pending approval, blocks outbound SMS)
+- Transcript analysis: switched from OpenAI GPT-4o-mini to Anthropic Claude Haiku
+- Vapi fixes: $189→$150 fee regression, empty tools array, transfer no-answer behavior
+- Webhook fixes: flagged_urgent, transfer metadata, recording_url capture (all deployed, need verification)
+- Portal fixes: blank dashboard, forgot password, audio playback, date filter, settings auto-save crash
+- 9 test calls in DB, all with recording URLs backfilled
+- Source control: GitHub private repo wdgrasham/FixMyNight, all work committed and pushed
+- **Remaining:** wrong number scenario, hangup scenario, morning summary accuracy check,
+  full emergency dispatch cycle, transfer no-answer verification, duration_seconds verification
 
-**Decisions made this session that aren't in the spec:**
-Branding and public marketing site deferred — placeholder styling in Phase 4.
-See DECISIONS-AND-CHANGES.md "Branding and Marketing Site — Out of Scope" entry.
+**Source Control:**
+- GitHub: https://github.com/wdgrasham/FixMyNight (private)
+- Branch: master
+- Last commit: 2026-03-08 (Phase 5 checkpoint + secrets cleanup)
 
 ---
 

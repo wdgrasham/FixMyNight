@@ -678,4 +678,111 @@ Each service should show: current usage, plan limits, percentage used, and a war
 
 ---
 
-*This document is the authoritative record of all V1.5 and V1.6 decisions. Any implementation that contradicts this document contains an error. Last updated: 2026-03-06.*
+---
+
+## Phase 5 Work — March 7–8, 2026
+
+Major debugging, feature additions, and infrastructure work during Phase 5 testing.
+
+### SMS Infrastructure & A2P Compliance (March 7)
+
+1. **Twilio SMS webhook signature validation failure:** Railway sits behind a reverse proxy, so `request.url` returned the internal Railway hostname instead of the public URL. Twilio's signature validation uses the public URL. Fixed by reconstructing the URL from `X-Forwarded-Proto` and `Host` headers.
+
+2. **Inbound SMS tested and passing:** ON, OFF, STATUS commands all work. Tech auto-verification on first valid command confirmed working.
+
+3. **SMS compliance page deployed:** Created `/sms` public page for A2P 10DLC campaign requirements. Includes program description, opt-in/out instructions, message frequency, HELP/STOP keywords, carrier disclaimer.
+
+4. **A2P campaign resubmission:** Previous campaign was rejected because CTA, Privacy URL, and Terms URL were set to `example.com`. Resubmitted with corrected URLs pointing to fixmyday.ai. Approval pending (1–3 business days). Outbound SMS blocked until approved.
+
+### Transcript Analysis: OpenAI → Anthropic (March 7)
+
+**Decision:** Switched the post-call transcript analysis from OpenAI GPT-4o-mini to Anthropic Claude Haiku (`claude-haiku-4-5-20251001`).
+
+**Rationale:** The webhook handler analyzes call transcripts to extract structured data (call type, caller name, issue summary, etc.) from Vapi's end-of-call-report. Claude Haiku is faster, cheaper, and produces more accurate structured JSON extraction than GPT-4o-mini for this use case. Added `ANTHROPIC_API_KEY` to Railway environment variables.
+
+**Implementation:** `app/routers/webhooks.py` — replaced `openai.ChatCompletion.create()` with `anthropic.Anthropic().messages.create()`. Same JSON schema prompt, same extraction fields.
+
+### Morning Summary Fixes (March 7)
+
+- **Unknown/failed calls:** Calls that couldn't be classified (transcript analysis failed, no call_type set) were showing as "hangups" in the morning summary. Fixed to show as "unprocessed" with a note that the call needs manual review.
+
+### Vapi Configuration Fixes (March 7–8)
+
+1. **$189 → $150 fee regression:** The Vapi assistant had a static `firstMessage` that said "$189" (from early testing) instead of using the dynamic `{emergency_fee}` from the client's database record. The static config was overriding the webhook-built prompt. Fixed by ensuring the webhook handler always sends the dynamically-built prompt.
+
+2. **Transfer regression — empty tools array:** The static Vapi assistant config had `model.tools: []` which overrode the tools sent by the webhook. Emergency transfers were silently failing because the assistant had no `transferCall` tool. Fixed by removing the static tools override.
+
+3. **Emergency transfer no-answer behavior:** When Bob (on-call tech) doesn't answer, the warm-transfer-experimental transferAssistant was set to `firstMessageMode: "assistant-speaks-first"`, causing it to immediately talk when voicemail connects and falsely mark the transfer as successful. Changed to `assistant-waits-for-user` with improved voicemail detection prompt. Reduced `maxDurationSeconds` from 45→30, `silenceTimeoutSeconds` from 15→10.
+
+### Webhook Handler Fixes (March 8)
+
+1. **`flagged_urgent` not auto-set for emergencies:** Old logic only flagged sleep+emergency or business_hours+emergency edge cases. Changed to `flagged_urgent = call_type == "emergency" or is_emergency` — all emergencies are flagged regardless of time window.
+
+2. **Transfer metadata missing:** `transferred_to_phone` and `transferred_to_tech_id` were not being stored in end-of-call-report handler. Added on-call tech lookup when `is_transfer` is True.
+
+3. **`duration_seconds` always null:** Added debug logging to identify whether Vapi's end-of-call-report includes `startedAt`/`endedAt`. Timing fields found in `call` object.
+
+4. **`recording_url` capture:** Added `recording_url` column to `calls` table and SQLAlchemy model. Wired into webhook handler to extract from `artifact.recordingUrl` or `call.recordingUrl`. Backfilled all 9 existing calls from Vapi API.
+
+### Client Portal Fixes & Features (March 8)
+
+1. **Blank dashboard fix:** Backend `DashboardResponse` returned 5 flat fields but frontend expected `on_call_tech: {name, since}`, `twilio_number`, `settings_summary`, `stats_7d`. Rewrote backend endpoint to compute 7-day stats with SQLAlchemy aggregates, settings summary, and on-call tech info. Added new Pydantic schemas: `OnCallTechSummary`, `SettingsSummary`, `Stats7d`.
+
+2. **Forgot Password flow:** New `POST /api/v1/auth/portal-forgot-password` endpoint. Reuses existing magic link infrastructure (JWT token, SendGrid email, PortalSetup page). Added `?reset=true` param for conditional UI text ("Reset Your Password" vs "Welcome"). Rate limited 3/15min. Always returns 200 to prevent email enumeration. New `PortalForgotPassword.tsx` page.
+
+3. **Audio playback in Call History:** New `PlayButton.tsx` component for compact play/pause buttons. Inline HTML5 `<audio>` player with controls in expanded call rows. Added Recording column to table. Fixed audio controls: removed `h-8` height constraint (clipped native controls), changed `preload="none"` to `preload="metadata"` for duration display.
+
+4. **Call History date filter fix:** Two-part fix:
+   - Frontend: Added `dateRangeComplete` guard — only sends dates to API when both From and To are set. Previously, setting just one date triggered an API call with partial params.
+   - Backend: Changed raw string comparison to parsed datetime objects. `datetime.strptime(date_from, "%Y-%m-%d")` and end-of-day for `date_to`. PostgreSQL can't implicitly cast `"2026-03-06"` string to compare against `DateTime(timezone=True)` column.
+   - Error clearing: Added `setError('')` to filter onChange handlers so error state clears when filters change.
+
+5. **Settings auto-save crash fix:** `onBlur={handleBlurSave}` on the root `<div>` auto-saved on every field blur, sending partial/invalid data. After successful PATCH, `setSettings(response)` replaced the Client object with `{"status": "updated"}`, causing `settings.business_days.includes()` → TypeError → white screen. Fixed by: removing auto-save entirely (save only on button click), not overwriting local state with PATCH response, adding dismissible error banner for failed saves.
+
+6. **Portal password set:** `portal_password_hash` was null for Stellar HVAC. Set password `StellarHVAC2026!` directly via bcrypt hash in DB.
+
+7. **Client Portal link on product page:** Added "Client Portal" button to CTA section and footer of FixMyNight product page.
+
+### Source Control (March 8)
+
+- Set up GitHub remote: private repo `wdgrasham/FixMyNight`
+- Committed all Phase 5 work (96 files, 13K+ lines)
+- Cleaned secrets from git history (Twilio account IDs in `vapi_call_detail.json`) using `git filter-branch`
+- Updated `.gitignore` to exclude debug dumps, zip files, saved HTML pages
+
+---
+
+## Outstanding Items — Next Session Priorities
+
+### Bugs (Must Fix Before Launch)
+
+| # | Bug | Impact |
+|---|-----|--------|
+| 1 | Emergency transfer → no answer → Sarah disconnects instead of returning to take a message | Caller is dropped. Critical. warm-transfer-experimental fix deployed but not verified with live call. |
+| 2 | `flagged_urgent` not auto-set for emergency calls | Fix deployed but needs verification with new calls. |
+| 3 | `transferred_to_phone` / `transferred_to_tech_id` not stored on successful transfers | Fix deployed but needs verification with new calls. |
+| 4 | `duration_seconds` always null | Debug logging added, needs new calls to confirm Vapi payload structure. |
+
+### Blocked
+
+| Item | Blocker |
+|------|---------|
+| Outbound SMS (tech notifications, admin alerts, morning summary SMS) | A2P 10DLC campaign approval pending (1–3 business days) |
+
+### Remaining Phase 5 Tests
+
+- Wrong number call scenario
+- Hangup call scenario (caller hangs up during greeting)
+- Morning summary email accuracy check (compare against 9-call database list)
+- Full emergency dispatch cycle: call → fee → approval → transfer → success → summary
+- Sarah voice script refinements (if needed after test calls)
+
+### Deferred Items
+
+- Per-day business hours (different hours per day of week) — post-launch
+- Recording decision: keep enabled, keep disclosure, don't build playback UI beyond current QA tool
+- Client portal link on main site navigation — requested, verify deployed
+
+---
+
+*This document is the authoritative record of all V1.5 and V1.6 decisions. Any implementation that contradicts this document contains an error. Last updated: 2026-03-08.*

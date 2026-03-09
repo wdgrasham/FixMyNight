@@ -339,7 +339,7 @@ function PricingSection() {
 
         {checkoutStatus === 'success' && (
           <div className="mb-8 bg-green-50 border border-green-200 rounded-xl p-4 text-center">
-            <p className="text-green-700 font-medium">Welcome aboard! Your subscription is active. We'll be in touch to get you set up.</p>
+            <p className="text-green-700 font-medium">Welcome aboard! Your subscription is active. Check your email — we'll send setup instructions within the next few hours to get your after-hours line up and running.</p>
           </div>
         )}
         {checkoutStatus === 'canceled' && (

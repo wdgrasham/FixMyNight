@@ -168,6 +168,6 @@ app.include_router(sms.router)
 app.include_router(stripe_billing.router)
 
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
 async def health():
     return {"status": "ok", "service": "fixmynight-backend"}

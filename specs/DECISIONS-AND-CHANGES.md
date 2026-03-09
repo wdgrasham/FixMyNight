@@ -937,11 +937,101 @@ Built automated new-client flow triggered by Stripe checkout:
 
 ### Deferred Items
 
-- Per-day business hours (different hours per day of week) — post-launch
-- Admin service monitoring dashboard (Vapi/Twilio/Anthropic/Railway/Stripe balances)
-- Monthly client value summary email with ROI calculation
+- ~~Per-day business hours (different hours per day of week) — post-launch~~ **DONE 2026-03-09**
+- ~~Admin service monitoring dashboard (Vapi/Twilio/Anthropic/Railway/Stripe balances)~~ **DONE 2026-03-09**
+- ~~Monthly client value summary email with ROI calculation~~ **DONE 2026-03-09**
 - Configure Railway auto-deploy from GitHub repo
-- Overage billing ($1.50/call over plan limit) — track but don't enforce yet
+- ~~Overage billing ($1.50/call over plan limit) — track but don't enforce yet~~ **DONE 2026-03-09**
+
+---
+
+## March 9 Session — Overage Billing, Per-Day Hours, Fallback Assistant (2026-03-09)
+
+Major session covering four features: overage billing enforcement, plan limit auto-sync, per-day business hours, and a Vapi fallback assistant for outage resilience. Also added HEAD method support on the health endpoint for UptimeRobot.
+
+### Task 4: Overage Billing ($1.50/call Over Plan Limit)
+
+**Problem:** Clients on Starter/Standard/Pro plans had no enforcement of call limits. Calls over the plan limit were untracked and unbilled.
+
+**Decision:** Metered Stripe billing with daily overage reporting.
+
+**Implementation:**
+- **DB:** Added `plan_call_limit` (INTEGER) and `last_overage_reported_date` (DATE) columns to `clients` table.
+- **Cron:** New `app/cron/overage_reporting.py` — runs daily at 9 AM UTC. For each client with a Stripe subscription, checks if tomorrow is billing day. If so, counts calls in the current billing period, computes overage (calls - plan limit), and reports to Stripe via `stripe.SubscriptionItem.create_usage_record()` with `action="set"`.
+- **Stripe:** Overage price ID `price_1T9BhJF4SIXUt9GkCc06OboB` ($1.50/unit metered). Added as second subscription item when checkout completes via `stripe.SubscriptionItem.create()`. Tier limits: Starter=40, Standard=100, Pro=250.
+- **Portal:** Dashboard shows usage status card with progress bar (green <80%, amber 80-100%, red >100%) and overage count when over limit.
+- **Admin:** Client list shows `Usage` column with color-coded calls_mtd / plan_limit display.
+- **Schemas:** Added `UsageStatus` model (calls_used, calls_included, overage_calls, usage_percent, subscription_tier, overage_rate). Added to `DashboardResponse`.
+
+### Task 5: Auto-Set plan_call_limit When Tier Changes
+
+**Problem:** Existing clients (Stellar HVAC, Freezing HVAC) had `subscription_tier` set but `plan_call_limit` was NULL because they were onboarded before overage billing code existed.
+
+**Decision:** Two-pronged fix:
+1. **Backfill migration** in `main.py` lifespan: `UPDATE clients SET plan_call_limit = CASE WHEN subscription_tier = 'starter' THEN 40 ...` for all clients where `plan_call_limit IS NULL`.
+2. **Auto-derive on change**: When admin PATCHes `subscription_tier`, `plan_call_limit` is automatically set from `TIER_CALL_LIMITS` dict in `admin.py`.
+
+### Task 6: Per-Day Business Hours Schedule
+
+**Problem:** Single `business_hours_start`/`business_hours_end` + `business_days` array couldn't represent different hours per day (e.g. Mon-Fri 8-6, Sat 9-1, Sun closed).
+
+**Decision:** JSONB `business_hours_schedule` column with per-day objects. Keep legacy fields for backward compatibility. Sleep window stays as a single setting.
+
+**Schema:**
+```json
+{
+  "monday":    {"enabled": true,  "start": "08:00", "end": "18:00"},
+  "tuesday":   {"enabled": true,  "start": "08:00", "end": "18:00"},
+  "saturday":  {"enabled": false, "start": null,    "end": null},
+  ...
+}
+```
+
+**Implementation:**
+- **DB:** Added `business_hours_schedule JSONB` column to `clients`. Backfill migration in `main.py` constructs JSONB from `business_days` array + `business_hours_start`/`business_hours_end` for all existing clients.
+- **`time_window.py`:** Rewrote `get_time_window()` to check per-day schedule first (via `_ISO_TO_DAY` mapping), falls back to old fields. Added `get_next_open_info()` that finds the next business day the company reopens.
+- **`prompt_builder.py`:** Uses `get_next_open_info()` to include next-open-day in callback promises (e.g. "They'll reach out to you by 9 AM (Monday at 8:00 AM)").
+- **Frontend:** New shared `BusinessHoursEditor` component with 7-row layout (day toggle, start/end time pickers, "Copy to all" button). Used in PortalSettings, ClientDetail (edit + view), and ClientNew.
+- **Types:** Added `DaySchedule`, `BusinessHoursSchedule`, `DAY_KEYS`, `DAY_LABELS`, `defaultSchedule()` to `types.ts`.
+- **Routers:** Added `business_hours_schedule` to `PORTAL_EDITABLE_FIELDS`, `VAPI_REBUILD_TRIGGERS` (both portal.py and admin.py), and portal GET settings response.
+- **Onboarding:** Updated `onboarding.py` to derive routing_rules from per-day schedule.
+
+### Task 7: Vapi Fallback Assistant for Backend Outages
+
+**Problem:** When Railway is down, the assistant-request webhook fails and callers hear nothing — the call drops.
+
+**Decision:** Create a single generic static "Sarah — Fallback (Generic)" assistant in Vapi. Set it as the `assistantId` on all phone numbers. When the webhook works, dynamic config overrides it. When the webhook fails, Vapi loads the fallback.
+
+**Fallback behavior:**
+- Greeting: "Thank you for calling. This is Sarah, your after-hours answering service."
+- Collects caller name, phone, and issue description
+- For emergencies: "I've noted this as an emergency... dispatch fees may apply"
+- For routine: "I'll make sure the team gets your message first thing in the morning"
+- NO transfers attempted (backend is down, can't look up tech numbers)
+- NO client-specific data (business name, specific fees, agent name)
+- Ends with "Have a good night."
+- Recording disclosure included
+- `endCallPhrases` set for auto-hangup
+
+**Implementation:**
+- **`app/services/vapi.py`:** Added `FALLBACK_SYSTEM_PROMPT`, `FALLBACK_FIRST_MESSAGE` constants. Added `create_fallback_assistant()`, `_update_fallback_assistant()`, `update_phone_number_fallback()`, `ensure_fallback_assistant()` functions. Updated `import_twilio_number_to_vapi()` to use fallback as phone number's `assistantId`.
+- **`app/main.py`:** Added `_setup_fallback_assistant()` startup task. On every boot: creates fallback if missing (stores ID in `system_settings` table), syncs prompt if exists, updates all active phone numbers. Fully non-fatal — if Vapi is also down, startup continues.
+- **`app/routers/admin.py`:** Added `GET /api/v1/admin/fallback-status` endpoint for inspection.
+- **Fallback ID storage:** `system_settings` table, key `vapi_fallback_assistant_id`.
+
+### Task 8: Health Endpoint HEAD Method
+
+**Problem:** UptimeRobot sends HEAD requests by default. `/health` only accepted GET, returning 405.
+
+**Decision:** Changed `@app.get("/health")` to `@app.api_route("/health", methods=["GET", "HEAD"])`.
+
+### Outstanding Items After March 9
+
+- Configure Railway auto-deploy from GitHub repo
+- Test fallback assistant: temporarily break webhook URL, call +19796525799, confirm fallback answers
+- Railway deploy pending (incident during session — code pushed to GitHub, will auto-deploy on recovery)
+- Remaining Phase 5 QA tests (wrong number, hangup, full emergency dispatch cycle, morning summary accuracy)
+- Switch Stripe from test mode to live mode when ready
 
 ---
 

@@ -18,6 +18,15 @@ def _get_vapi_tools(transfer_destination: str = None):
     Call logging is handled server-side via the end-of-call-report webhook,
     so Sarah has no logCall tool and never pauses mid-conversation to log.
     """
+    # Failure message spoken to caller when transfer doesn't go through.
+    # Must end with an endCallPhrases trigger ("Have a good night").
+    transfer_failure_msg = (
+        "I wasn't able to reach our on-call technician right now. "
+        "I've sent an urgent alert to the team with your information "
+        "and someone will call you back as soon as possible. "
+        "Have a good night."
+    )
+
     # Set destination dynamically if an on-call tech phone is provided
     destinations = []
     if transfer_destination:
@@ -26,6 +35,24 @@ def _get_vapi_tools(transfer_destination: str = None):
             "number": transfer_destination,
             "transferPlan": {
                 "mode": "warm-transfer-experimental",
+                "message": "Connecting you with our on-call technician now. Please hold.",
+                "summaryPlan": {
+                    "enabled": True,
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": (
+                                "Summarize the transfer outcome in one sentence. "
+                                "State clearly whether the transfer SUCCEEDED or FAILED "
+                                "and the reason (e.g. 'no answer', 'voicemail', 'declined')."
+                            ),
+                        },
+                    ],
+                },
+                "fallbackPlan": {
+                    "message": transfer_failure_msg,
+                    "endCallEnabled": True,
+                },
                 "transferAssistant": {
                     "firstMessage": (
                         "Hi, this is the after-hours answering service. "
@@ -70,7 +97,6 @@ def _get_vapi_tools(transfer_destination: str = None):
                     },
                 },
             },
-            "message": "Connecting you with our on-call technician now. Please hold.",
         }]
 
     return [
@@ -84,12 +110,7 @@ def _get_vapi_tools(transfer_destination: str = None):
                 },
                 {
                     "type": "request-failed",
-                    "content": (
-                        "I wasn't able to reach our on-call technician right now, "
-                        "but I do have your information and I've sent an urgent alert to the team. "
-                        "Someone will call you back as soon as possible. "
-                        "Thanks for calling and have a good night."
-                    ),
+                    "content": transfer_failure_msg,
                     "endCallAfterSpokenEnabled": True,
                 },
             ],

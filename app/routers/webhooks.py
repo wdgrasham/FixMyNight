@@ -478,13 +478,84 @@ async def handle_transfer(client, params, vapi_call_id, caller_phone, db):
             "result": "No on-call technician available. Emergency team has been alerted."
         }
 
-    # Return transfer destination FIRST — before any DB write
+    # Return transfer destination FIRST — before any DB write.
+    # Must include full transferPlan so warm transfer + voicemail detection
+    # + fallbackPlan message all work correctly.
+    transfer_failure_msg = (
+        "I wasn't able to reach our on-call technician right now. "
+        "I've sent an urgent alert to the team with your information "
+        "and someone will call you back as soon as possible. "
+        "Have a good night."
+    )
     transfer_response = {
         "destination": {
             "type": "number",
             "number": tech.phone,
             "callerId": client.twilio_number,
             "message": "Connecting you with our on-call technician now. Please hold.",
+            "transferPlan": {
+                "mode": "warm-transfer-experimental",
+                "summaryPlan": {
+                    "enabled": True,
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": (
+                                "Summarize the transfer outcome in one sentence. "
+                                "State clearly whether the transfer SUCCEEDED or FAILED "
+                                "and the reason (e.g. 'no answer', 'voicemail', 'declined')."
+                            ),
+                        },
+                    ],
+                },
+                "fallbackPlan": {
+                    "message": transfer_failure_msg,
+                    "endCallEnabled": True,
+                },
+                "transferAssistant": {
+                    "firstMessage": (
+                        "Hi, this is the after-hours answering service. "
+                        "I have an emergency caller on the line. "
+                        "Are you available to take this call?"
+                    ),
+                    "firstMessageMode": "assistant-waits-for-user",
+                    "maxDurationSeconds": 30,
+                    "silenceTimeoutSeconds": 10,
+                    "model": {
+                        "provider": "openai",
+                        "model": "gpt-4o-mini",
+                        "messages": [{
+                            "role": "system",
+                            "content": (
+                                "You are a transfer assistant for an emergency dispatch service. "
+                                "Your ONLY job is to determine if a REAL PERSON answered the phone.\n\n"
+                                "LISTEN FIRST. Wait for the other end to speak before you say anything.\n\n"
+                                "VOICEMAIL DETECTION — call transferCancel IMMEDIATELY if you hear ANY of these:\n"
+                                "- 'Please leave a message'\n"
+                                "- 'The person you are trying to reach'\n"
+                                "- 'is not available'\n"
+                                "- 'at the tone' or 'after the beep'\n"
+                                "- 'voicemail' or 'mailbox'\n"
+                                "- 'press' followed by a number (IVR menu)\n"
+                                "- A long beep or tone\n"
+                                "- Music or a pre-recorded greeting\n"
+                                "- 'The number you have dialed'\n"
+                                "- 'Please try again later'\n"
+                                "- Any carrier or automated system message\n\n"
+                                "REAL PERSON DETECTION:\n"
+                                "- A real person will say something short like 'Hello', 'Yeah', 'This is [name]', 'Who is this?'\n"
+                                "- When you hear a real person, speak your firstMessage and ask if they are available\n"
+                                "- ONLY call transferSuccessful if they clearly confirm availability\n"
+                                "- If they decline — call transferCancel\n\n"
+                                "WHEN IN DOUBT — call transferCancel. A missed transfer can be retried. "
+                                "A caller stuck on a voicemail box cannot.\n\n"
+                                "Keep the interaction under 15 seconds. Be direct. No small talk."
+                            ),
+                        }],
+                        "temperature": 0.1,
+                    },
+                },
+            },
         }
     }
 

@@ -142,6 +142,7 @@ class ClientUpdate(BaseModel):
     callback_expected_time: Optional[str] = None
     agent_name: Optional[str] = None
     status: Optional[str] = None
+    subscription_tier: Optional[str] = None
 
     @field_validator('owner_phone')
     @classmethod

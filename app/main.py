@@ -53,6 +53,14 @@ async def lifespan(app: FastAPI):
         await conn.execute(text(
             "ALTER TABLE clients ADD COLUMN IF NOT EXISTS last_overage_reported_date DATE"
         ))
+        # Backfill plan_call_limit from subscription_tier for existing clients
+        await conn.execute(text(
+            "UPDATE clients SET plan_call_limit = CASE "
+            "WHEN subscription_tier = 'starter' THEN 40 "
+            "WHEN subscription_tier = 'standard' THEN 100 "
+            "WHEN subscription_tier = 'pro' THEN 250 END "
+            "WHERE subscription_tier IS NOT NULL AND plan_call_limit IS NULL"
+        ))
 
     # Startup: start cron scheduler
     scheduler.add_job(morning_summary_job, "interval", minutes=1, id="morning_summary")

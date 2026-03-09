@@ -219,6 +219,12 @@ async def patch_client(
     if not updated_fields:
         return ClientResponse.model_validate(client)
 
+    # Auto-set plan_call_limit when subscription_tier changes
+    TIER_CALL_LIMITS = {"starter": 40, "standard": 100, "pro": 250}
+    if "subscription_tier" in updated_fields:
+        new_tier = updated_fields["subscription_tier"]
+        updated_fields["plan_call_limit"] = TIER_CALL_LIMITS.get(new_tier)
+
     needs_rebuild = bool(set(updated_fields.keys()) & VAPI_REBUILD_TRIGGERS)
 
     # Convert time strings to time objects

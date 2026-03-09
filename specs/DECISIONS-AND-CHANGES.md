@@ -750,18 +750,59 @@ Major debugging, feature additions, and infrastructure work during Phase 5 testi
 - Cleaned secrets from git history (Twilio account IDs in `vapi_call_detail.json`) using `git filter-branch`
 - Updated `.gitignore` to exclude debug dumps, zip files, saved HTML pages
 
+### Session: March 8 (continued)
+
+#### Bug Fixes — Webhook & Transfer (commits d8de32d through d536532)
+
+1. **Transferred call data loss (critical):** `handle_transfer()` created a call record early with tech info but no duration/recording/transcript. `end-of-call-report` found the existing record and skipped entirely. Fix: end-of-call-report now UPDATES existing records instead of skipping — enriches them with duration, recording_url, transcript analysis, and corrects `transfer_success` from Vapi's `ended_reason`.
+
+2. **Emergency transfer no-answer — caller dropped in silence (critical):** Root cause was multi-layered:
+   - `transfer-destination-request` handler returned a bare destination without `transferPlan`, bypassing warm transfer config entirely
+   - Vapi's `request-failed` tool message never fired because the transfer wasn't using the tool-level config
+   - Fix: three-layer approach — (a) `fallbackPlan.message` in transferPlan for auto-play on failure with `endCallEnabled: true`, (b) `summaryPlan` to inject transfer outcome context into Sarah's conversation, (c) prompt reinforcement telling Sarah to speak IMMEDIATELY if she regains control after a transfer
+   - Both code paths (tool-level destinations AND `transfer-destination-request` response) now include full `transferPlan` with warm-transfer-experimental, voicemail detection, fallbackPlan, and summaryPlan
+
+3. **`flagged_urgent` not auto-set:** Changed to `flagged_urgent = call_type == "emergency" or is_emergency` — all emergencies flagged regardless of time window.
+
+4. **Failed emergency transfer SMS alert:** When end-of-call-report detects an emergency call where dispatch was available but transfer didn't succeed, sends SMS to all `admin_sms_numbers` with caller name, phone, issue summary, and "Please call back ASAP."
+
+5. **Vapi `request-failed` message updated:** Reassures caller their info was captured and an alert was sent, ends with "Have a good night" to trigger `endCallPhrases` hangup. `endCallAfterSpokenEnabled: True` as backup.
+
+6. **Sarah's prompt updated:** After failed transfer, Sarah speaks the failure script immediately without waiting for the caller. No number confirmation, no message-taking, no follow-up questions. Info was already collected before the transfer attempt.
+
+#### Forgot Password (commit d574e7c, b1ab1b1)
+
+1. **Client portal:** `PortalEntry.tsx` had "Forgot password? Contact your FixMyNight administrator." as plain text. Changed to a clickable link to `/fixmynight/portal/forgot-password`. The forgot password page and backend endpoint already existed from earlier in the session.
+
+2. **Admin portal (new):** Full forgot password flow added:
+   - `SystemSetting` model + `system_settings` table (auto-created on startup) stores admin password hash override in DB
+   - Admin login checks DB override first, falls back to `ADMIN_PASSWORD_HASH` env var
+   - `POST /api/v1/auth/admin-forgot-password` — rate-limited 3/15min, sends reset link via SendGrid to `ADMIN_EMAIL` env var, always returns 200 (anti-enumeration)
+   - `POST /api/v1/auth/admin-set-password` — validates 1-hour token, upserts hash to `system_settings`, returns JWT
+   - New pages: `AdminForgotPassword.tsx`, `AdminResetPassword.tsx`
+   - "Forgot password?" link added to admin login page
+   - Requires `ADMIN_EMAIL` env var in Railway
+
+#### Railway Deployment Fix
+
+Railway backend was crashing with `ProgrammingError: foreign key constraint "jobs_client_id_fkey" cannot be implemented` — an old V1.4 `jobs` table with SERIAL PKs being created by a stale `Base.metadata.create_all()` call that no longer exists in the codebase. The deployed code on Railway was from a cached/stale build that didn't match the GitHub repo.
+
+**Fix:** Redeployed via `railway up` which uploads the local codebase directly.
+
+**Going forward:** Always run `railway up` after pushing to GitHub to ensure Railway has the latest code, OR configure Railway to auto-deploy from the `wdgrasham/FixMyNight` GitHub repo (Settings → Source → Connect GitHub repo → select branch `master`).
+
 ---
 
 ## Outstanding Items — Next Session Priorities
 
 ### Bugs (Must Fix Before Launch)
 
-| # | Bug | Impact |
+| # | Bug | Status |
 |---|-----|--------|
-| 1 | Emergency transfer → no answer → Sarah disconnects instead of returning to take a message | Caller is dropped. Critical. warm-transfer-experimental fix deployed but not verified with live call. |
-| 2 | `flagged_urgent` not auto-set for emergency calls | Fix deployed but needs verification with new calls. |
-| 3 | `transferred_to_phone` / `transferred_to_tech_id` not stored on successful transfers | Fix deployed but needs verification with new calls. |
-| 4 | `duration_seconds` always null | Debug logging added, needs new calls to confirm Vapi payload structure. |
+| 1 | Emergency transfer → no answer → caller in silence | Three-layer fix deployed (fallbackPlan, summaryPlan, prompt). Needs verification with live call. |
+| 2 | `flagged_urgent` not auto-set for emergency calls | Fixed. Needs verification with new calls. |
+| 3 | `transferred_to_phone` / `transferred_to_tech_id` not stored | Fixed. Needs verification with new calls. |
+| 4 | `duration_seconds` always null | Fixed (end-of-call-report now updates existing records). Needs verification with new calls. |
 
 ### Blocked
 
@@ -776,12 +817,15 @@ Major debugging, feature additions, and infrastructure work during Phase 5 testi
 - Morning summary email accuracy check (compare against 9-call database list)
 - Full emergency dispatch cycle: call → fee → approval → transfer → success → summary
 - Sarah voice script refinements (if needed after test calls)
+- Verify portal forgot password end-to-end (reset email sent to stellarhvac@use.startmail.com)
+- Verify admin forgot password end-to-end
 
 ### Deferred Items
 
 - Per-day business hours (different hours per day of week) — post-launch
 - Recording decision: keep enabled, keep disclosure, don't build playback UI beyond current QA tool
 - Client portal link on main site navigation — requested, verify deployed
+- Configure Railway auto-deploy from GitHub repo
 
 ---
 

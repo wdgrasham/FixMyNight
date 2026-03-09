@@ -59,13 +59,8 @@ async def create_checkout_session(request: Request, db: AsyncSession = Depends(g
                 "label": {"type": "custom", "custom": "Owner Full Name"},
                 "type": "text",
             },
-            {
-                "key": "owner_phone",
-                "label": {"type": "custom", "custom": "Phone Number"},
-                "type": "text",
-            },
         ],
-        # In subscription mode, Stripe always creates a customer and collects email
+        "phone_number_collection": {"enabled": True},
     }
 
     # If client_id provided, attach it as metadata for webhook to link subscription
@@ -171,20 +166,21 @@ async def _handle_new_signup(db, session, tier, customer_id, subscription_id):
 
     business_name = custom_data.get("business_name", "").strip() or "New Business"
     owner_name = custom_data.get("owner_name", "").strip() or "Owner"
-    owner_phone = custom_data.get("owner_phone", "").strip() or ""
 
-    # Get email from customer_details (collected by Stripe billing)
+    # Get email and phone from customer_details (collected by Stripe)
     customer_details = session.get("customer_details", {})
     owner_email = customer_details.get("email", "")
+    owner_phone = customer_details.get("phone", "") or ""
 
-    # Normalize phone — add +1 prefix if it looks like a US number
-    phone_digits = "".join(c for c in owner_phone if c.isdigit())
-    if len(phone_digits) == 10:
-        owner_phone = f"+1{phone_digits}"
-    elif len(phone_digits) == 11 and phone_digits.startswith("1"):
-        owner_phone = f"+{phone_digits}"
-    elif not owner_phone.startswith("+"):
-        owner_phone = f"+1{phone_digits}" if phone_digits else "+10000000000"
+    # Normalize phone — Stripe returns E.164 format already, but handle edge cases
+    if owner_phone and not owner_phone.startswith("+"):
+        phone_digits = "".join(c for c in owner_phone if c.isdigit())
+        if len(phone_digits) == 10:
+            owner_phone = f"+1{phone_digits}"
+        elif len(phone_digits) == 11 and phone_digits.startswith("1"):
+            owner_phone = f"+{phone_digits}"
+    if not owner_phone:
+        owner_phone = "+10000000000"
 
     # Generate a random portal password (admin will send magic link later)
     random_password = secrets.token_urlsafe(16)

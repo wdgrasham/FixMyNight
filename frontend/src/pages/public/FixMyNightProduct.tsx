@@ -304,6 +304,15 @@ function PricingSection() {
   const [loadingTier, setLoadingTier] = useState<string | null>(null);
   const checkoutStatus = new URLSearchParams(window.location.search).get('checkout');
 
+  useEffect(() => {
+    if (checkoutStatus) {
+      // Scroll to pricing section after Stripe redirect
+      setTimeout(() => {
+        document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    }
+  }, [checkoutStatus]);
+
   const handleCheckout = async (priceId: string, tierName: string) => {
     setLoadingTier(tierName);
     try {

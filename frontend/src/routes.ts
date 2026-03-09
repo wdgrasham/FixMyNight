@@ -7,6 +7,7 @@ export const ROUTES = {
   CASE_EVALUATION: '/case-evaluation',
   SMS_PROGRAM: '/sms',
   FIXMYNIGHT_PRODUCT: '/fixmynight',
+  FIXMYNIGHT_PRICING: '/fixmynight/pricing',
   ADMIN_LOGIN: '/fixmynight/admin',
   ADMIN_FORGOT_PASSWORD: '/fixmynight/admin/forgot-password',
   ADMIN_RESET_PASSWORD: '/fixmynight/admin/reset-password',

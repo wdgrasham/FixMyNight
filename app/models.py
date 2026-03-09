@@ -40,6 +40,10 @@ class Client(Base):
     last_summary_sent_date = Column(Date)
     portal_password_hash = Column(String)
     portal_last_login = Column(DateTime(timezone=True))
+    stripe_customer_id = Column(String, unique=True)
+    stripe_subscription_id = Column(String, unique=True)
+    subscription_tier = Column(String)
+    subscription_status = Column(String)
 
 
 class Technician(Base):

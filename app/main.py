@@ -7,7 +7,7 @@ from slowapi.errors import RateLimitExceeded
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from .limiter import limiter
-from .routers import auth, admin, portal, webhooks, sms
+from .routers import auth, admin, portal, webhooks, sms, stripe_billing
 from .cron.morning_summary import morning_summary_job
 from .cron.oncall_reminder import oncall_reminder_job
 from .database import engine
@@ -32,6 +32,11 @@ async def lifespan(app: FastAPI):
         await conn.execute(text(
             "ALTER TABLE calls ADD COLUMN IF NOT EXISTS vapi_cost DECIMAL(10,4)"
         ))
+        # Add Stripe subscription columns
+        for col in ["stripe_customer_id", "stripe_subscription_id", "subscription_tier", "subscription_status"]:
+            await conn.execute(text(
+                f"ALTER TABLE clients ADD COLUMN IF NOT EXISTS {col} TEXT"
+            ))
 
     # Startup: start cron scheduler
     scheduler.add_job(morning_summary_job, "interval", minutes=1, id="morning_summary")
@@ -64,6 +69,7 @@ app.include_router(admin.router)
 app.include_router(portal.router)
 app.include_router(webhooks.router)
 app.include_router(sms.router)
+app.include_router(stripe_billing.router)
 
 
 @app.get("/health")

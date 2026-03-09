@@ -8,6 +8,7 @@ import Legal from './pages/public/Legal';
 import Privacy from './pages/public/Privacy';
 import Terms from './pages/public/Terms';
 import FixMyNightProduct from './pages/public/FixMyNightProduct';
+import Pricing from './pages/public/Pricing';
 import SmsProgram from './pages/public/SmsProgram';
 import Contact from './pages/public/Contact';
 import CaseEvaluation from './pages/public/CaseEvaluation';
@@ -47,6 +48,7 @@ export default function App() {
 
         {/* FixMyNight product page — standalone layout */}
         <Route path="/fixmynight" element={<FixMyNightProduct />} />
+        <Route path="/fixmynight/pricing" element={<Pricing />} />
 
         {/* SMS program page — standalone dark layout for A2P compliance */}
         <Route path="/sms" element={<SmsProgram />} />

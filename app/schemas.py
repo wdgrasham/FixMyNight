@@ -267,9 +267,19 @@ class Stats7d(BaseModel):
     transfer_success_rate: float = 0.0
 
 
+class UsageStatus(BaseModel):
+    calls_used: int = 0
+    calls_included: int = 0
+    overage_calls: int = 0
+    usage_percent: float = 0.0
+    subscription_tier: Optional[str] = None
+    overage_rate: str = "1.50"
+
+
 class DashboardResponse(BaseModel):
     on_call_tech: Optional[OnCallTechSummary] = None
     twilio_number: Optional[str] = None
     recent_calls: List[CallResponse]
     settings_summary: SettingsSummary
     stats_7d: Stats7d
+    usage_status: Optional[UsageStatus] = None

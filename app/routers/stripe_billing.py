@@ -27,6 +27,10 @@ PRICE_TO_TIER = {
 
 TIER_LABELS = {"starter": "Starter", "standard": "Standard", "pro": "Pro"}
 
+TIER_CALL_LIMITS = {"starter": 40, "standard": 100, "pro": 250}
+
+OVERAGE_PRICE_ID = "price_1T9BhJF4SIXUt9GkCc06OboB"
+
 VALID_PRICE_IDS = set(PRICE_TO_TIER.keys())
 
 
@@ -103,8 +107,10 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
         customer_id = session.get("customer")
         subscription_id = session.get("subscription")
 
+        plan_limit = TIER_CALL_LIMITS.get(tier)
+
         if client_id:
-            # Existing client — just link Stripe IDs
+            # Existing client — link Stripe IDs and set plan limit
             await db.execute(
                 update(Client)
                 .where(Client.id == client_id)
@@ -113,6 +119,7 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                     stripe_subscription_id=subscription_id,
                     subscription_tier=tier,
                     subscription_status="active",
+                    plan_call_limit=plan_limit,
                     updated_at=datetime.utcnow(),
                 )
             )
@@ -120,7 +127,18 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
             print(f"[STRIPE] Checkout completed: client={client_id} tier={tier} sub={subscription_id}")
         else:
             # New signup — auto-create client
-            await _handle_new_signup(db, session, tier, customer_id, subscription_id)
+            await _handle_new_signup(db, session, tier, customer_id, subscription_id, plan_limit)
+
+        # Add overage metered price as second subscription item
+        if subscription_id:
+            try:
+                stripe.SubscriptionItem.create(
+                    subscription=subscription_id,
+                    price=OVERAGE_PRICE_ID,
+                )
+                print(f"[STRIPE] Added overage price item to subscription {subscription_id}")
+            except Exception as e:
+                print(f"[WARNING] Failed to add overage price item: {e}")
 
     elif event_type in (
         "customer.subscription.updated",
@@ -140,10 +158,20 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                 "subscription_status": status,
                 "updated_at": datetime.utcnow(),
             }
+            # Update tier and plan limit if subscription items changed
+            if subscription.get("items", {}).get("data"):
+                for item in subscription["items"]["data"]:
+                    price_id = item.get("price", {}).get("id", "")
+                    new_tier = PRICE_TO_TIER.get(price_id)
+                    if new_tier:
+                        new_values["subscription_tier"] = new_tier
+                        new_values["plan_call_limit"] = TIER_CALL_LIMITS.get(new_tier)
+                        break
             # If subscription was deleted/canceled
             if status == "canceled":
                 new_values["subscription_tier"] = None
                 new_values["stripe_subscription_id"] = None
+                new_values["plan_call_limit"] = None
 
             await db.execute(
                 update(Client).where(Client.id == client.id).values(**new_values)
@@ -154,7 +182,7 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
     return {"received": True}
 
 
-async def _handle_new_signup(db, session, tier, customer_id, subscription_id):
+async def _handle_new_signup(db, session, tier, customer_id, subscription_id, plan_limit=None):
     """Auto-create a client record from Stripe checkout data."""
     # Extract custom fields
     custom_fields = session.get("custom_fields", [])
@@ -201,6 +229,7 @@ async def _handle_new_signup(db, session, tier, customer_id, subscription_id):
         stripe_subscription_id=subscription_id,
         subscription_tier=tier,
         subscription_status="active",
+        plan_call_limit=plan_limit,
         portal_password_hash=password_hash,
     )
     db.add(client)

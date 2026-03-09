@@ -108,6 +108,15 @@ async def list_clients(
     )
     cost_mtd_map = {row[0]: float(row[1]) for row in cost_mtd_result}
 
+    # Fetch month-to-date call counts per client (for usage tracking)
+    calls_mtd_result = await db.execute(
+        select(Call.client_id, func.count()).where(
+            Call.client_id.in_(client_ids),
+            Call.created_at >= month_start,
+        ).group_by(Call.client_id)
+    )
+    calls_mtd_map = {row[0]: row[1] for row in calls_mtd_result}
+
     response = []
     for c in clients:
         data = ClientResponse.model_validate(c).model_dump()
@@ -115,6 +124,9 @@ async def list_clients(
         data["calls_7d"] = calls_7d_map.get(c.id, 0)
         data["calls_24h"] = calls_24h_map.get(c.id, 0)
         data["cost_mtd"] = round(cost_mtd_map.get(c.id, 0), 2)
+        data["calls_mtd"] = calls_mtd_map.get(c.id, 0)
+        data["plan_call_limit"] = c.plan_call_limit
+        data["subscription_tier"] = c.subscription_tier
         response.append(data)
     return response
 

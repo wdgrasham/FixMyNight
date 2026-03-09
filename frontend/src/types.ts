@@ -65,6 +65,15 @@ export interface Call {
   created_at: string;
 }
 
+export interface UsageStatus {
+  calls_used: number;
+  calls_included: number;
+  overage_calls: number;
+  usage_percent: number;
+  subscription_tier: string | null;
+  overage_rate: string;
+}
+
 export interface DashboardData {
   on_call_tech: {
     name: string;
@@ -86,6 +95,7 @@ export interface DashboardData {
     transfers_completed: number;
     transfer_success_rate: number;
   };
+  usage_status: UsageStatus | null;
 }
 
 export interface CallsListResponse {

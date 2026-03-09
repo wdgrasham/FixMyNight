@@ -33,11 +33,50 @@ export default function PortalDashboard() {
   if (error) return <ErrorBanner message={error} />;
   if (!data) return null;
 
-  const { on_call_tech, twilio_number, recent_calls, settings_summary, stats_7d } = data;
+  const { on_call_tech, twilio_number, recent_calls, settings_summary, stats_7d, usage_status } = data;
+
+  const usageColor = usage_status
+    ? usage_status.usage_percent > 100 ? 'red' : usage_status.usage_percent >= 80 ? 'yellow' : 'green'
+    : 'green';
+  const usageBarColor = usageColor === 'red' ? 'bg-red-500' : usageColor === 'yellow' ? 'bg-amber-500' : 'bg-green-500';
+  const usageTextColor = usageColor === 'red' ? 'text-red-600' : usageColor === 'yellow' ? 'text-amber-600' : 'text-green-600';
+  const tierLabels: Record<string, string> = { starter: 'Starter', standard: 'Standard', pro: 'Pro' };
 
   return (
     <div className="space-y-6">
       <h1 className="text-xl font-semibold text-gray-900">Dashboard</h1>
+
+      {/* Usage Status Card */}
+      {usage_status && (
+        <div className="bg-white rounded-lg border border-gray-200 p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Plan Usage</h2>
+            <span className="text-xs text-gray-400">
+              {tierLabels[usage_status.subscription_tier || ''] || usage_status.subscription_tier} Plan
+            </span>
+          </div>
+          <div className="flex items-end justify-between mb-2">
+            <div>
+              <span className={`text-2xl font-semibold ${usageTextColor}`}>{usage_status.calls_used}</span>
+              <span className="text-sm text-gray-400"> / {usage_status.calls_included} calls</span>
+            </div>
+            <span className={`text-sm font-medium ${usageTextColor}`}>
+              {Math.round(usage_status.usage_percent)}%
+            </span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+            <div
+              className={`h-2.5 rounded-full transition-all ${usageBarColor}`}
+              style={{ width: `${Math.min(100, usage_status.usage_percent)}%` }}
+            />
+          </div>
+          {usage_status.overage_calls > 0 && (
+            <p className="mt-2 text-xs text-red-600">
+              {usage_status.overage_calls} overage call{usage_status.overage_calls !== 1 ? 's' : ''} at ${usage_status.overage_rate}/call
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* On-Call Status */}

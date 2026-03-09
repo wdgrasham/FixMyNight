@@ -19,6 +19,7 @@ from ..schemas import (
     OnCallTechSummary,
     SettingsSummary,
     Stats7d,
+    UsageStatus,
 )
 from ..utils.audit import write_audit_log
 from ..services.vapi import rebuild_vapi_assistant
@@ -136,6 +137,11 @@ async def dashboard(
         sleep_window_end=_time_str(client.sleep_window_end),
     )
 
+    # Usage status (if client has a plan with call limit)
+    usage_status = None
+    if client.plan_call_limit and client.stripe_subscription_id:
+        usage_status = await _get_usage_status(client, db)
+
     return DashboardResponse(
         on_call_tech=on_call_summary,
         twilio_number=client.twilio_number,
@@ -147,6 +153,52 @@ async def dashboard(
             transfers_completed=transfers_completed,
             transfer_success_rate=round(transfer_success_rate, 1),
         ),
+        usage_status=usage_status,
+    )
+
+
+async def _get_usage_status(client, db: AsyncSession) -> UsageStatus:
+    """Calculate current billing period usage for a client."""
+    import asyncio
+    import stripe
+    import os
+
+    stripe.api_key = os.environ.get("STRIPE_SECRET_KEY", "")
+
+    try:
+        def _get_period():
+            sub = stripe.Subscription.retrieve(client.stripe_subscription_id)
+            return (
+                datetime.utcfromtimestamp(sub["current_period_start"]),
+                datetime.utcfromtimestamp(sub["current_period_end"]),
+            )
+
+        period_start, period_end = await asyncio.to_thread(_get_period)
+    except Exception:
+        # Fallback: use current calendar month
+        period_start = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        period_end = datetime.utcnow()
+
+    call_count_result = await db.execute(
+        select(func.count())
+        .select_from(Call)
+        .where(
+            Call.client_id == client.id,
+            Call.created_at >= period_start,
+            Call.created_at < period_end,
+        )
+    )
+    calls_used = call_count_result.scalar() or 0
+    calls_included = client.plan_call_limit or 0
+    overage = max(0, calls_used - calls_included)
+    pct = (calls_used / calls_included * 100) if calls_included > 0 else 0
+
+    return UsageStatus(
+        calls_used=calls_used,
+        calls_included=calls_included,
+        overage_calls=overage,
+        usage_percent=round(pct, 1),
+        subscription_tier=client.subscription_tier,
     )
 
 

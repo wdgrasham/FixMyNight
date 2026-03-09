@@ -11,6 +11,7 @@ from .routers import auth, admin, portal, webhooks, sms, stripe_billing
 from .cron.morning_summary import morning_summary_job
 from .cron.oncall_reminder import oncall_reminder_job
 from .cron.monthly_billing_summary import monthly_billing_summary_job
+from .cron.overage_reporting import overage_reporting_job
 from .database import engine
 from .models import SystemSetting
 
@@ -45,13 +46,21 @@ async def lifespan(app: FastAPI):
         await conn.execute(text(
             "ALTER TABLE clients ADD COLUMN IF NOT EXISTS last_monthly_summary_sent_date DATE"
         ))
+        # Overage billing columns
+        await conn.execute(text(
+            "ALTER TABLE clients ADD COLUMN IF NOT EXISTS plan_call_limit INTEGER"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE clients ADD COLUMN IF NOT EXISTS last_overage_reported_date DATE"
+        ))
 
     # Startup: start cron scheduler
     scheduler.add_job(morning_summary_job, "interval", minutes=1, id="morning_summary")
     scheduler.add_job(oncall_reminder_job, "interval", minutes=1, id="oncall_reminder")
     scheduler.add_job(monthly_billing_summary_job, "cron", hour=10, minute=0, id="monthly_billing_summary")
+    scheduler.add_job(overage_reporting_job, "cron", hour=9, minute=0, id="overage_reporting")
     scheduler.start()
-    print("[INFO] APScheduler started — morning_summary + oncall_reminder + monthly_billing_summary jobs running")
+    print("[INFO] APScheduler started — morning_summary + oncall_reminder + monthly_billing_summary + overage_reporting jobs running")
     yield
     # Shutdown
     scheduler.shutdown()

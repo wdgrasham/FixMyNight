@@ -46,6 +46,8 @@ class Client(Base):
     subscription_status = Column(String)
     avg_job_value = Column(DECIMAL(10, 2), default=250.00)
     last_monthly_summary_sent_date = Column(Date)
+    plan_call_limit = Column(Integer)
+    last_overage_reported_date = Column(Date)
 
 
 class Technician(Base):

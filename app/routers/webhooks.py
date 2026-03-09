@@ -242,16 +242,16 @@ async def vapi_intake(request: Request, db: AsyncSession = Depends(get_db)):
             logger.warning("end-of-call-report: no client for phoneNumberId=%s", phone_number_id)
             return {"ok": True}
 
-        # Skip if a Call record already exists for this vapi_call_id (e.g. from transfer handler)
-        existing = await db.execute(
+        # Check if a Call record already exists (e.g. from transfer handler).
+        # If so, we UPDATE it with duration/recording/transcript instead of skipping.
+        existing_result = await db.execute(
             select(Call).where(Call.vapi_call_id == vapi_call_id)
         )
-        if existing.scalar_one_or_none():
-            print(f"[VAPI] end-of-call-report: skipping, call already logged for {vapi_call_id}", file=sys.stderr, flush=True)
-            return {"ok": True}
+        existing_call = existing_result.scalar_one_or_none()
 
         # Skip very short calls with no transcript (phantom/test calls)
-        if not transcript or len(transcript.strip()) < 20:
+        # — but only if there's no existing record to enrich
+        if not existing_call and (not transcript or len(transcript.strip()) < 20):
             print(f"[VAPI] end-of-call-report: skipping, no transcript for {vapi_call_id}", file=sys.stderr, flush=True)
             return {"ok": True}
 
@@ -301,32 +301,62 @@ async def vapi_intake(request: Request, db: AsyncSession = Depends(get_db)):
                 transferred_to_phone = tech.phone
                 transferred_to_tech_id = tech.id
 
-        await _log_call_record(
-            db,
-            client,
-            extracted,
-            vapi_call_id,
-            caller_phone_final,
-            time_window=time_window,
-            transfer_attempted=is_transfer,
-            transfer_success=is_transfer,
-            transferred_to_phone=transferred_to_phone,
-            transferred_to_tech_id=transferred_to_tech_id,
-            flagged_urgent=flagged_urgent,
-            requires_callback=requires_callback,
-            call_started_at=call_started_at,
-            call_ended_at=call_ended_at,
-            duration_seconds=duration_seconds,
-            recording_url=recording_url,
-        )
+        if existing_call:
+            # UPDATE existing record (created by transfer handler) with data
+            # it didn't have: duration, recording, transcript analysis results
+            existing_call.call_started_at = call_started_at
+            existing_call.call_ended_at = call_ended_at
+            existing_call.duration_seconds = duration_seconds
+            existing_call.recording_url = recording_url
+            existing_call.caller_name = extracted.get("caller_name") or existing_call.caller_name
+            existing_call.caller_phone = caller_phone_final or existing_call.caller_phone
+            existing_call.issue_summary = extracted.get("issue_summary") or existing_call.issue_summary
+            existing_call.call_type = call_type if call_type != "unknown" else existing_call.call_type
+            existing_call.is_emergency = is_emergency or existing_call.is_emergency
+            existing_call.flagged_urgent = flagged_urgent or existing_call.flagged_urgent
+            existing_call.fee_approved = extracted.get("fee_approved") if extracted.get("fee_approved") is not None else existing_call.fee_approved
+            # Transfer success from ended_reason is more accurate than the
+            # optimistic True set by handle_transfer at transfer time
+            if ended_reason:
+                existing_call.transfer_success = is_transfer
+            if not is_transfer and existing_call.transfer_attempted:
+                existing_call.requires_callback = True
+            await db.commit()
+            print(
+                f"[VAPI] end-of-call-report: UPDATED existing call {vapi_call_id} with "
+                f"duration={duration_seconds}, recording={'yes' if recording_url else 'no'}, "
+                f"type={call_type}, transfer_success={is_transfer}",
+                file=sys.stderr, flush=True,
+            )
+        else:
+            await _log_call_record(
+                db,
+                client,
+                extracted,
+                vapi_call_id,
+                caller_phone_final,
+                time_window=time_window,
+                transfer_attempted=is_transfer,
+                transfer_success=is_transfer,
+                transferred_to_phone=transferred_to_phone,
+                transferred_to_tech_id=transferred_to_tech_id,
+                flagged_urgent=flagged_urgent,
+                requires_callback=requires_callback,
+                call_started_at=call_started_at,
+                call_ended_at=call_ended_at,
+                duration_seconds=duration_seconds,
+                recording_url=recording_url,
+            )
+
         await write_audit_log(
             db,
-            "call.logged",
+            "call.logged" if not existing_call else "call.enriched",
             "system",
             client_id=client.id,
             metadata={
                 "call_id": vapi_call_id,
                 "source": "end-of-call-report",
+                "updated_existing": bool(existing_call),
                 "is_emergency": is_emergency,
                 "call_type": call_type,
                 "time_window": time_window,
@@ -334,8 +364,49 @@ async def vapi_intake(request: Request, db: AsyncSession = Depends(get_db)):
             },
         )
 
-        # SMS notifications
-        if time_window == "business_hours" and not is_transfer:
+        # --- SMS notifications ---
+
+        # Detect failed emergency transfer: emergency call where dispatch was
+        # available but the transfer didn't go through (tech didn't answer).
+        transfer_should_have_happened = (
+            (call_type == "emergency" or is_emergency)
+            and client.emergency_enabled
+            and time_window not in ("sleep",)
+            and not (time_window == "business_hours" and not client.business_hours_emergency_dispatch)
+        )
+        failed_emergency_transfer = transfer_should_have_happened and not is_transfer
+
+        if failed_emergency_transfer:
+            # Look up on-call tech name for the alert message
+            tech_result = await db.execute(
+                select(Technician).where(
+                    Technician.client_id == client.id,
+                    Technician.on_call == True,
+                    Technician.is_active == True,
+                )
+            )
+            tech = tech_result.scalar_one_or_none()
+            tech_name = tech.name if tech else "on-call tech"
+
+            alert_msg = (
+                f"EMERGENCY transfer to {tech_name} failed for {client.business_name}. "
+                f"Caller: {extracted.get('caller_name', 'Unknown')} {caller_phone_final} — "
+                f"{extracted.get('issue_summary', 'No details')}. "
+                f"Please call back {caller_phone_final} ASAP."
+            )
+            # Send to all fallback SMS numbers
+            fallback_numbers = client.admin_sms_numbers
+            if isinstance(fallback_numbers, str):
+                fallback_numbers = json.loads(fallback_numbers)
+            for number in (fallback_numbers or []):
+                await send_sms(number, alert_msg, from_number=client.twilio_number)
+
+            print(
+                f"[VAPI] failed emergency transfer: sent SMS alert to {len(fallback_numbers or [])} numbers",
+                file=sys.stderr, flush=True,
+            )
+
+        if time_window == "business_hours" and not is_transfer and not failed_emergency_transfer:
             label = "URGENT — " if is_emergency else ""
             await send_sms(
                 client.owner_phone,

@@ -98,7 +98,7 @@ def build_sarah_prompt(client, time_window: str = "evening") -> str:
             f"Read back their number to confirm.\n"
             f"Get a brief description of the issue.\n"
             f"Call transferCall with the collected information.\n"
-            f"If transfer fails: follow the AFTER FAILED TRANSFER flow below.\n\n"
+            f"If transfer fails: the system handles it automatically — do not say anything.\n\n"
             f"If caller DECLINES the fee:\n"
             f"Fall through to the non-emergency/routine flow below."
         )
@@ -114,7 +114,7 @@ def build_sarah_prompt(client, time_window: str = "evening") -> str:
             f"Read back their number to confirm.\n"
             f"Get a brief description of the issue.\n"
             f"Call transferCall with the collected information.\n"
-            f"If transfer fails: follow the AFTER FAILED TRANSFER flow below."
+            f"If transfer fails: the system handles it automatically — do not say anything."
         )
 
     return f"""You are {agent_name}, the after-hours AI assistant for {client.business_name}.
@@ -134,10 +134,9 @@ Your first message (already spoken by the system) asks the caller whether this i
 ---
 
 AFTER FAILED TRANSFER:
-When you come back to the caller after a failed transfer:
-1. Say: "I wasn't able to reach our on-call {tech_title} right now. I've flagged this as urgent and someone will call you back as soon as possible. Let me confirm your number — I have [their number], is that correct?"
-2. After they confirm: "We'll make sure someone reaches out to you. Thanks for calling {client.business_name}. Have a good night."
-The call will end automatically after you say "Have a good night." Do not wait for a response. Do not ask if there's anything else.
+When you come back to the caller after a failed transfer, the system will automatically tell them we couldn't reach the technician and that we've sent an urgent alert to the team. The system will then end the call.
+You do NOT need to say anything — the system handles the failed-transfer message and hangup automatically.
+Do NOT try to take a detailed message or ask additional questions. The caller's information has already been collected before the transfer attempt.
 
 ---
 
@@ -194,7 +193,7 @@ IMPORTANT: Never use placeholder characters like X when reading back a number �
 
 CLOSINGS:
 - After transfer: "Great — transferring you now." (Vapi handles the bridge. Do not say goodbye before transfer.)
-- After failed transfer: "We'll make sure someone reaches out to you. Thanks for calling {client.business_name}. Have a good night."
+- After failed transfer: The system handles the message and hangup automatically. Do not speak.
 - Routine/message: "Thanks for calling {client.business_name}. Have a good night."
 
 ENDING THE CALL:

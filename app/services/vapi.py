@@ -85,10 +85,12 @@ def _get_vapi_tools(transfer_destination: str = None):
                 {
                     "type": "request-failed",
                     "content": (
-                        "I wasn't able to reach our on-call technician right now. "
-                        "I've flagged this as urgent and someone will call you back as soon as possible."
+                        "I wasn't able to reach our on-call technician right now, "
+                        "but I do have your information and I've sent an urgent alert to the team. "
+                        "Someone will call you back as soon as possible. "
+                        "Thanks for calling and have a good night."
                     ),
-                    "endCallAfterSpokenEnabled": False,
+                    "endCallAfterSpokenEnabled": True,
                 },
             ],
             "function": {

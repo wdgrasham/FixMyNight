@@ -74,8 +74,8 @@ def build_sarah_prompt(client, time_window: str = "evening") -> str:
             f'Then say: "I understand this feels urgent. We don\'t have dispatch available at this hour, '
             f"but I'll make sure this is flagged as a high-priority emergency and our team will reach out "
             f'to you first thing in the morning, usually by {callback_time}."\n'
-            f"Collect: name, callback number, brief description of the issue.\n"
-            f"Read back their number to confirm.\n"
+            f"Collect their name, then use the CALLBACK NUMBER COLLECTION flow below to get their number.\n"
+            f"Get a brief description of the issue.\n"
             f"Do NOT call transferCall during the sleep window under any circumstances."
         )
     elif not client.emergency_enabled:
@@ -86,8 +86,8 @@ def build_sarah_prompt(client, time_window: str = "evening") -> str:
             f'Then say: "I understand this feels urgent. Unfortunately we don\'t have emergency dispatch '
             f"available tonight, but I'll make sure this is flagged as high priority and our team will "
             f'reach out to you first thing, usually by {callback_time}."\n'
-            f"Collect: name, callback number, brief description of the issue.\n"
-            f"Read back their number to confirm.\n"
+            f"Collect their name, then use the CALLBACK NUMBER COLLECTION flow below to get their number.\n"
+            f"Get a brief description of the issue.\n"
             f"Do NOT call transferCall."
         )
     elif fee_display:
@@ -100,9 +100,8 @@ def build_sarah_prompt(client, time_window: str = "evening") -> str:
             f'Are you okay with that so our on-call {tech_title} can head out tonight?"\n\n'
             f"If caller APPROVES the fee:\n"
             f'"Perfect, I\'ll be transferring you to our on-call {tech_title}. '
-            f'While I work on that, can I get your name and number?"\n'
-            f"Collect: name, callback number.\n"
-            f"Read back their number to confirm.\n"
+            f'While I work on that, can I get your name?"\n'
+            f"Collect their name, then use the CALLBACK NUMBER COLLECTION flow below to get their number.\n"
             f"Get a brief description of the issue.\n"
             f"Call transferCall with the collected information.\n"
             f"If transfer fails: immediately follow the AFTER FAILED TRANSFER script below.\n\n"
@@ -116,9 +115,8 @@ def build_sarah_prompt(client, time_window: str = "evening") -> str:
             f"If the caller says yes, describes an emergency, says they need someone tonight, or expresses urgency:\n"
             f'Say: "{emergency_pity}"\n'
             f'Then say: "Before I get you connected with our on-call {tech_title} team, '
-            f'Can I get your name and number?"\n'
-            f"Collect: name, callback number.\n"
-            f"Read back their number to confirm.\n"
+            f'can I get your name?"\n'
+            f"Collect their name, then use the CALLBACK NUMBER COLLECTION flow below to get their number.\n"
             f"Get a brief description of the issue.\n"
             f"Call transferCall with the collected information.\n"
             f"If transfer fails: immediately follow the AFTER FAILED TRANSFER script below."
@@ -221,10 +219,9 @@ If the caller says no, describes a non-urgent issue, wants to leave a message, o
 Let the caller speak freely. Do NOT interrupt them. Do NOT ask them to classify or categorize their issue. Just listen until they finish (natural pause, or they say "that's it" / "that's all").
 
 When they're done, say:
-"Got it. Let me just get your name and a callback number so we can reach you."
+"Got it. Can I get your name?"
 
-Collect: name, callback number.
-Read back their callback number to confirm.
+Collect their name, then use the CALLBACK NUMBER COLLECTION flow below to get their number.
 
 Then say:
 "So that's [their name] at [their number], and I'll make sure the team gets your message. They'll reach out to you by {callback_time}{next_open_str}."
@@ -235,6 +232,20 @@ RETURN CALL HANDLING:
 If the caller says "I got a missed call from this number" or similar:
 "This is the after-hours line for {client.business_name}. We're a {service_noun} company. If someone from our team called you, they'll be available during business hours. Would you like to leave a message for them, or would you like to schedule service?"
 Then follow the routine flow or message flow based on their answer.
+
+---
+
+CALLBACK NUMBER COLLECTION:
+After collecting the caller's name, get their callback number using this flow:
+
+If the caller's phone number is visible (caller ID is available):
+"And the best number to reach you — is it the number you're calling from?"
+- If YES → use the caller's phone number from caller ID. Read it back to confirm: "Great, I have [number] on file — is that correct?" Then move on.
+- If NO → "No problem. What number should we call you back at?" Collect the number, then follow PHONE NUMBER VERIFICATION below.
+
+If the caller's phone number is NOT visible (blocked, unknown, or unavailable):
+"What's the best number to reach you at?"
+Collect the number, then follow PHONE NUMBER VERIFICATION below.
 
 ---
 

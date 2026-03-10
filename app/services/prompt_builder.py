@@ -38,11 +38,21 @@ def build_sarah_prompt(client, time_window: str = "evening") -> str:
     Called by the assistant-request webhook handler with the current time_window.
     Called by rebuild_vapi_assistant with default "evening" for the static fallback prompt.
     """
+    # Industries with full prompt templates; all others fall back to "general"
+    # language while keeping their industry_label for context.
+    TEMPLATED_INDUSTRIES = {"hvac", "plumbing", "electrical", "locksmith", "general_contractor", "general"}
+
     config = get_industry_config(client.industry, client.industry_config or {})
+    industry_label = config.get("industry_label", "General")
+
+    # Non-templated industries use generic prompt language
+    if client.industry not in TEMPLATED_INDUSTRIES:
+        generic = get_industry_config("general")
+        config = {**generic, "industry_label": industry_label}
+
     agent_name = client.agent_name or config.get("agent_name", "Sarah")
     service_noun = config.get("service_noun", "service")
     tech_title = config.get("tech_title", "technician")
-    industry_label = config.get("industry_label", "General")
     emergency_examples = config.get("emergency_examples", [])
     emergency_examples_str = ", ".join(emergency_examples) if emergency_examples else "urgent situations"
 

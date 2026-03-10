@@ -18,11 +18,11 @@ const INDUSTRY_EXAMPLES: Record<string, { emergency: string; routine: string }> 
   HVAC: { emergency: 'AC not working, no heat, furnace failure, refrigerant leak', routine: 'Scheduling maintenance, filter replacement, thermostat help, requesting a quote' },
   Plumbing: { emergency: 'Burst pipe, sewage backup, flooding, no water, water heater leaking, overflowing toilet', routine: 'Dripping faucet, slow drain, scheduling repair, requesting a quote' },
   Electrical: { emergency: 'Sparking outlet, burning smell from panel, power outage in part of house, exposed wires, breaker won\'t reset', routine: 'Light fixture install, outlet not working, scheduling inspection, requesting a quote' },
-  Locksmith: { emergency: 'Locked out, broken lock, security breach', routine: 'Key copy, rekey request, lock upgrade quote' },
+  Locksmith: { emergency: 'Locked out of house, locked out of car, broken lock, break-in damage, lost all keys, child or pet locked in car', routine: 'Rekey locks, install new deadbolt, make spare keys, lock upgrade' },
   'Pest Control': { emergency: 'Wasp nest near entry, snake inside, rodent infestation', routine: 'Quarterly treatment, ant problem, termite inspection' },
   Roofing: { emergency: 'Active roof leak, storm damage, tree on roof', routine: 'Inspection request, gutter cleaning, quote for replacement' },
   'Appliance Repair': { emergency: 'Gas leak from appliance, flooding from washer/dishwasher', routine: 'Refrigerator not cooling, dryer not heating, oven repair quote' },
-  'General Contractor': { emergency: 'Structural damage, water intrusion, safety hazard', routine: 'Renovation quote, repair estimate, project follow-up' },
+  'General Contractor': { emergency: 'Structural damage, roof collapse, storm damage, flooding from construction defect, broken window/door leaving home unsecured', routine: 'Renovation quote, repair estimate, inspection, project follow-up' },
   'Property Management': { emergency: 'Tenant lockout, major leak, no heat/AC, fire alarm', routine: 'Maintenance request, lease question, noise complaint' },
 };
 

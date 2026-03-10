@@ -29,7 +29,7 @@ export default function CaseEvaluation() {
         formData.append('files', file);
       });
       audioClips.forEach((clip, i) => {
-        formData.append('audio', clip.blob, `recording-${i + 1}.webm`);
+        formData.append('files', clip.blob, `recording-${i + 1}.webm`);
       });
 
       const sessionRes = await fetch(`${API_BASE}/api/case/create-session`, {

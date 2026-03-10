@@ -166,7 +166,7 @@ export default function PortalSettings() {
             </div>
             <div>
               <dt className="text-gray-500">Industry</dt>
-              <dd className="text-gray-900">{industryLabel((settings as Record<string, unknown>).industry as string)}</dd>
+              <dd className="text-gray-900">{industryLabel((settings as unknown as Record<string, unknown>).industry as string)}</dd>
             </div>
             <div>
               <dt className="text-gray-500">Agent Name</dt>

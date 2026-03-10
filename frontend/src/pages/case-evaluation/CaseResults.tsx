@@ -25,6 +25,7 @@ interface ApiSession {
   analysis_result: AnalysisResult | null;
   update_count: number;
   email_sent: boolean;
+  user_email: string | null;
 }
 
 const strengthColors: Record<string, { bg: string; text: string; border: string }> = {
@@ -41,11 +42,12 @@ export default function CaseResults() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Email state
-  const [email, setEmail] = useState('');
-  const [emailSending, setEmailSending] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
-  const [emailError, setEmailError] = useState<string | null>(null);
+  // Email state (for "send to another email")
+  const [showAltEmail, setShowAltEmail] = useState(false);
+  const [altEmail, setAltEmail] = useState('');
+  const [altEmailSending, setAltEmailSending] = useState(false);
+  const [altEmailSent, setAltEmailSent] = useState(false);
+  const [altEmailError, setAltEmailError] = useState<string | null>(null);
 
   // Inline editing state
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -104,25 +106,25 @@ export default function CaseResults() {
     return () => { stopPolling(); };
   }, [sessionId, fetchSession, stopPolling]);
 
-  const handleSendEmail = async () => {
-    if (!email.trim() || !sessionId || emailSending) return;
-    setEmailSending(true);
-    setEmailError(null);
+  const handleSendAltEmail = async () => {
+    if (!altEmail.trim() || !sessionId || altEmailSending) return;
+    setAltEmailSending(true);
+    setAltEmailError(null);
     try {
       const res = await fetch(`${API_BASE}/api/case/send-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: sessionId, email: email.trim() }),
+        body: JSON.stringify({ session_id: sessionId, email: altEmail.trim() }),
       });
       if (!res.ok) {
         const errData = await res.json().catch(() => null);
         throw new Error(errData?.detail || 'Failed to send email');
       }
-      setEmailSent(true);
+      setAltEmailSent(true);
     } catch (err) {
-      setEmailError(err instanceof Error ? err.message : 'Failed to send email');
+      setAltEmailError(err instanceof Error ? err.message : 'Failed to send email');
     } finally {
-      setEmailSending(false);
+      setAltEmailSending(false);
     }
   };
 
@@ -426,40 +428,61 @@ export default function CaseResults() {
             </div>
           )}
 
-          {/* Actions: Email + Download */}
+          {/* Actions: Email confirmation + Download */}
           <div className="rounded-lg border border-[#E2E8F0] bg-white p-5 space-y-4">
-            <p className="text-sm font-medium text-[#64748B]">Get Your Results</p>
+            <p className="text-sm font-medium text-[#64748B]">Get Your Report</p>
 
-            {emailSent ? (
+            {/* Auto-email confirmation */}
+            {session.email_sent && session.user_email && (
               <div className="flex items-center gap-2 text-sm text-green-600">
-                <CheckCircle className="h-4 w-4" />
-                PDF sent! Check your inbox.
-              </div>
-            ) : (
-              <div className="flex gap-2">
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email for PDF"
-                  className="flex-1 rounded-lg border border-[#CBD5E1] px-3 py-2.5 text-sm text-[#0F172A] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#F59E0B]"
-                />
-                <button
-                  type="button"
-                  onClick={handleSendEmail}
-                  disabled={!email.trim() || emailSending}
-                  className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
-                    email.trim() && !emailSending
-                      ? 'bg-[#F59E0B] text-[#0F172A] hover:bg-[#D97706]'
-                      : 'bg-[#E2E8F0] text-[#94A3B8] cursor-not-allowed'
-                  }`}
-                >
-                  <Mail className="h-4 w-4" />
-                  {emailSending ? 'Sending…' : 'Send'}
-                </button>
+                <CheckCircle className="h-4 w-4 shrink-0" />
+                <span>PDF report sent to <strong>{session.user_email}</strong></span>
               </div>
             )}
-            {emailError && <p className="text-sm text-red-600">{emailError}</p>}
+
+            {/* Send to another email */}
+            {altEmailSent ? (
+              <div className="flex items-center gap-2 text-sm text-green-600">
+                <CheckCircle className="h-4 w-4 shrink-0" />
+                <span>PDF also sent to <strong>{altEmail}</strong></span>
+              </div>
+            ) : showAltEmail ? (
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    value={altEmail}
+                    onChange={(e) => setAltEmail(e.target.value)}
+                    placeholder="Enter another email address"
+                    className="flex-1 rounded-lg border border-[#CBD5E1] px-3 py-2.5 text-sm text-[#0F172A] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#F59E0B]"
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleSendAltEmail(); }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSendAltEmail}
+                    disabled={!altEmail.trim() || altEmailSending}
+                    className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
+                      altEmail.trim() && !altEmailSending
+                        ? 'bg-[#F59E0B] text-[#0F172A] hover:bg-[#D97706]'
+                        : 'bg-[#E2E8F0] text-[#94A3B8] cursor-not-allowed'
+                    }`}
+                  >
+                    <Mail className="h-4 w-4" />
+                    {altEmailSending ? 'Sending…' : 'Send'}
+                  </button>
+                </div>
+                {altEmailError && <p className="text-sm text-red-600">{altEmailError}</p>}
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowAltEmail(true)}
+                className="inline-flex items-center gap-1.5 text-sm text-[#F59E0B] hover:text-[#D97706] transition-colors"
+              >
+                <Mail className="h-3.5 w-3.5" />
+                Send to a different email
+              </button>
+            )}
 
             <div className="flex flex-col sm:flex-row gap-3">
               <a

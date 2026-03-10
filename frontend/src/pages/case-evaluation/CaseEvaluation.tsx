@@ -101,8 +101,8 @@ export default function CaseEvaluation() {
           <h1 className="text-3xl font-bold tracking-tight text-[#0F172A] sm:text-4xl">
             Do I Have a Case?
           </h1>
-          <p className="mt-3 text-lg text-[#64748B] max-w-xl mx-auto">
-            AI analyzes your situation in minutes — get a clear summary, strength estimate, and next-step suggestions. Only $7. Not legal advice.
+          <p className="mt-3 text-lg text-[#64748B] max-w-2xl mx-auto">
+            AI organizes your case facts in minutes — walk into your free consultation prepared, or make every minute of a $500/hour session count. Only $7. Not legal advice.
           </p>
         </div>
 
@@ -142,16 +142,36 @@ export default function CaseEvaluation() {
             <h3 className="text-sm font-semibold text-[#0F172A] mb-4">What you get for $7</h3>
             <div className="grid sm:grid-cols-2 gap-3">
               {[
-                'Clear fact summary',
+                'Clear fact summary organized for attorney review',
                 'Case strength estimate (Strong / Medium / Weak)',
+                'Area of law identified',
                 'Practical next steps',
-                'PDF report emailed to you',
+                'PDF report ready to hand to your lawyer',
               ].map((item) => (
                 <div key={item} className="flex items-start gap-2.5">
                   <CheckCircle className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
                   <span className="text-sm text-[#475569]">{item}</span>
                 </div>
               ))}
+            </div>
+            <p className="mt-4 text-sm text-[#0F172A] font-medium border-t border-[#E2E8F0] pt-4">
+              Turn a 30-minute free consultation into a productive strategy session.
+            </p>
+          </div>
+
+          {/* Why prepare section */}
+          <div className="rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-6">
+            <h3 className="text-sm font-semibold text-[#0F172A] mb-4">Why prepare before your consultation?</h3>
+            <div className="space-y-4">
+              <p className="text-sm text-[#475569] leading-relaxed">
+                Free 30-minute consultations go fast. Most of that time gets spent just explaining what happened. With your facts already organized, your lawyer can skip straight to strategy.
+              </p>
+              <p className="text-sm text-[#475569] leading-relaxed">
+                At $500/hour, every minute counts. A prepared client gets better advice in less time.
+              </p>
+              <p className="text-sm text-[#475569] leading-relaxed">
+                Lawyers appreciate organized clients — it shows you're serious and helps them evaluate your case faster.
+              </p>
             </div>
           </div>
 

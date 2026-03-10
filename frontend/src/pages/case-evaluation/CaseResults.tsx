@@ -187,6 +187,13 @@ export default function CaseResults() {
         </div>
 
         <div className="space-y-6">
+          {/* Attorney callout */}
+          <div className="rounded-lg border border-[#D1FAE5] bg-[#ECFDF5] p-5">
+            <p className="text-sm text-[#065F46] leading-relaxed">
+              <span className="font-semibold">Take this report to your attorney.</span> Your facts are organized, your case strength is assessed, and your next steps are clear. This saves time in both free consultations and paid sessions.
+            </p>
+          </div>
+
           {/* Case Strength Badge */}
           <div className={`rounded-lg border ${colors.border} ${colors.bg} p-6 text-center`}>
             <p className="text-sm font-medium text-[#64748B] mb-2">Case Strength Assessment</p>

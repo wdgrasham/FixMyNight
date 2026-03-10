@@ -5,6 +5,7 @@ export const ROUTES = {
   TERMS: '/terms',
   CONTACT: '/contact',
   CASE_EVALUATION: '/case-evaluation',
+  CASE_RESULTS: '/case-evaluation/results',
   SMS_PROGRAM: '/sms',
   FIXMYNIGHT_PRODUCT: '/fixmynight',
   FIXMYNIGHT_PRICING: '/fixmynight/pricing',

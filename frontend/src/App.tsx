@@ -11,7 +11,8 @@ import FixMyNightProduct from './pages/public/FixMyNightProduct';
 import Pricing from './pages/public/Pricing';
 import SmsProgram from './pages/public/SmsProgram';
 import Contact from './pages/public/Contact';
-import CaseEvaluation from './pages/public/CaseEvaluation';
+import CaseEvaluation from './pages/case-evaluation/CaseEvaluation';
+import CaseResults from './pages/case-evaluation/CaseResults';
 
 import AdminLogin from './pages/admin/AdminLogin';
 import AdminForgotPassword from './pages/admin/AdminForgotPassword';
@@ -45,6 +46,7 @@ export default function App() {
           <Route path="/terms" element={<Terms />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/case-evaluation" element={<CaseEvaluation />} />
+          <Route path="/case-evaluation/results" element={<CaseResults />} />
         </Route>
 
         {/* FixMyNight product page — standalone layout */}

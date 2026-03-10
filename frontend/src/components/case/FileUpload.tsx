@@ -6,18 +6,31 @@ interface FileUploadProps {
   onFilesChange: (files: File[]) => void;
 }
 
-const ACCEPTED_TYPES = [
+const ACCEPTED_TYPES = new Set([
   'application/pdf',
   'image/jpeg',
+  'image/jpg',
   'image/png',
   'image/heic',
   'image/heif',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-];
+]);
+
+const ACCEPTED_EXT = new Set([
+  '.pdf', '.jpg', '.jpeg', '.png', '.heic', '.heif', '.docx',
+]);
 
 const ACCEPTED_EXTENSIONS = '.pdf,.jpg,.jpeg,.png,.heic,.heif,.docx';
 const MAX_TOTAL_SIZE = 20 * 1024 * 1024; // 20MB
 const MAX_FILES = 10;
+
+function isAcceptedFile(file: File): boolean {
+  // Check MIME type first
+  if (file.type && ACCEPTED_TYPES.has(file.type)) return true;
+  // Fallback: check file extension (handles empty/missing MIME types)
+  const ext = file.name.toLowerCase().match(/\.[^.]+$/)?.[0];
+  return ext ? ACCEPTED_EXT.has(ext) : false;
+}
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -41,8 +54,8 @@ export default function FileUpload({ files, onFilesChange }: FileUploadProps) {
     setError(null);
     const incoming = Array.from(newFiles);
 
-    // Validate types
-    const invalid = incoming.filter(f => !ACCEPTED_TYPES.includes(f.type));
+    // Validate types (by MIME type or extension fallback)
+    const invalid = incoming.filter(f => !isAcceptedFile(f));
     if (invalid.length > 0) {
       setError(`Unsupported file type: ${invalid[0].name}. Accepted: PDF, JPG, PNG, HEIC, DOCX.`);
       return;

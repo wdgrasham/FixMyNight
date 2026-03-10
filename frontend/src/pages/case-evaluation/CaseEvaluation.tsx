@@ -41,7 +41,12 @@ export default function CaseEvaluation() {
 
       if (!sessionRes.ok) {
         const errData = await sessionRes.json().catch(() => null);
-        throw new Error(errData?.detail || `Upload failed (${sessionRes.status})`);
+        console.error('create-session error:', sessionRes.status, errData);
+        const detail = errData?.detail;
+        const msg = typeof detail === 'string' ? detail
+          : detail ? JSON.stringify(detail)
+          : `Upload failed (${sessionRes.status})`;
+        throw new Error(msg);
       }
 
       const { session_id } = await sessionRes.json();
@@ -55,7 +60,12 @@ export default function CaseEvaluation() {
 
       if (!checkoutRes.ok) {
         const errData = await checkoutRes.json().catch(() => null);
-        throw new Error(errData?.detail || `Checkout failed (${checkoutRes.status})`);
+        console.error('create-checkout error:', checkoutRes.status, errData);
+        const detail = errData?.detail;
+        const msg = typeof detail === 'string' ? detail
+          : detail ? JSON.stringify(detail)
+          : `Checkout failed (${checkoutRes.status})`;
+        throw new Error(msg);
       }
 
       const { checkout_url } = await checkoutRes.json();
@@ -63,7 +73,9 @@ export default function CaseEvaluation() {
       // Step 3: Redirect to Stripe
       window.location.href = checkout_url;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+      console.error('Case evaluation submit error:', err);
+      const message = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
+      setError(message);
       setSubmitting(false);
     }
   };

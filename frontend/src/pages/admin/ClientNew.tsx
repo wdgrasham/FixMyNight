@@ -15,9 +15,9 @@ const INDUSTRIES = [
 ];
 
 const INDUSTRY_EXAMPLES: Record<string, { emergency: string; routine: string }> = {
-  HVAC: { emergency: 'No heat in winter, no AC in extreme heat, gas smell, carbon monoxide alarm', routine: 'Tune-up requests, filter changes, noise complaints, thermostat issues' },
-  Plumbing: { emergency: 'Burst pipe, sewage backup, no water, major leak', routine: 'Dripping faucet, running toilet, water heater quote, drain cleaning' },
-  Electrical: { emergency: 'No power, sparking outlet, burning smell, exposed wires', routine: 'Light fixture install, outlet addition, panel upgrade quote' },
+  HVAC: { emergency: 'AC not working, no heat, furnace failure, refrigerant leak', routine: 'Scheduling maintenance, filter replacement, thermostat help, requesting a quote' },
+  Plumbing: { emergency: 'Burst pipe, sewage backup, flooding, no water, water heater leaking, overflowing toilet', routine: 'Dripping faucet, slow drain, scheduling repair, requesting a quote' },
+  Electrical: { emergency: 'Sparking outlet, burning smell from panel, power outage in part of house, exposed wires, breaker won\'t reset', routine: 'Light fixture install, outlet not working, scheduling inspection, requesting a quote' },
   Locksmith: { emergency: 'Locked out, broken lock, security breach', routine: 'Key copy, rekey request, lock upgrade quote' },
   'Pest Control': { emergency: 'Wasp nest near entry, snake inside, rodent infestation', routine: 'Quarterly treatment, ant problem, termite inspection' },
   Roofing: { emergency: 'Active roof leak, storm damage, tree on roof', routine: 'Inspection request, gutter cleaning, quote for replacement' },

@@ -57,6 +57,7 @@ export default function ClientList() {
             <tr>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Business Name</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Owner</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Industry</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Twilio Number</th>
               <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">24h</th>
@@ -70,7 +71,7 @@ export default function ClientList() {
           <tbody className="divide-y divide-gray-100">
             {clients.length === 0 ? (
               <tr>
-                <td colSpan={10} className="px-4 py-8 text-center text-sm text-gray-500">
+                <td colSpan={11} className="px-4 py-8 text-center text-sm text-gray-500">
                   No clients yet. <Link to={ROUTES.ADMIN_CLIENT_NEW} className="text-[#F59E0B] underline">Create one</Link>.
                 </td>
               </tr>
@@ -83,6 +84,7 @@ export default function ClientList() {
                     </Link>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-700">{client.owner_name}</td>
+                  <td className="px-4 py-3 text-sm text-gray-700">{client.industry?.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) || '—'}</td>
                   <td className="px-4 py-3"><StatusBadge status={client.status} /></td>
                   <td className="px-4 py-3 text-sm text-gray-700">
                     {client.twilio_number ? formatPhoneDisplay(client.twilio_number) : '—'}

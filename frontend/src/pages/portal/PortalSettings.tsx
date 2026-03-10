@@ -156,6 +156,25 @@ export default function PortalSettings() {
       )}
 
       <div className="space-y-6">
+        {/* Business Info (read-only) */}
+        <section className="bg-white rounded-lg border border-gray-200 p-6">
+          <h2 className="text-lg font-medium text-gray-900 mb-4">Business Info</h2>
+          <dl className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+            <div>
+              <dt className="text-gray-500">Business</dt>
+              <dd className="text-gray-900 font-medium">{settings.business_name}</dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">Industry</dt>
+              <dd className="text-gray-900">{(settings as Record<string, unknown>).industry ? String((settings as Record<string, unknown>).industry).replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) : '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">Agent Name</dt>
+              <dd className="text-gray-900">{settings.agent_name}</dd>
+            </div>
+          </dl>
+        </section>
+
         {/* Callback Timing */}
         <section className="bg-white rounded-lg border border-gray-200 p-6">
           <h2 className="text-lg font-medium text-gray-900 mb-4">Callback Timing</h2>

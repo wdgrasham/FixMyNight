@@ -4,11 +4,10 @@ INDUSTRY_DEFAULTS = {
     "hvac": {
         "industry_label": "HVAC",
         "emergency_examples": [
-            "No heat in freezing weather",
-            "No cooling in extreme heat",
-            "Water leaking from HVAC unit",
-            "System completely non-functional",
-            "Unusual burning smell from unit",
+            "AC not working",
+            "No heat",
+            "Furnace failure",
+            "Refrigerant leak",
         ],
         "routine_examples": [
             "Scheduling maintenance",
@@ -18,16 +17,17 @@ INDUSTRY_DEFAULTS = {
         ],
         "agent_name": "Sarah",
         "service_noun": "HVAC service",
-        "tech_title": "technician",
+        "tech_title": "HVAC technician",
     },
     "plumbing": {
         "industry_label": "Plumbing",
         "emergency_examples": [
             "Burst pipe",
-            "No water to building",
             "Sewage backup",
-            "Water heater failure",
-            "Major water leak",
+            "Flooding",
+            "No water",
+            "Water heater leaking",
+            "Overflowing toilet",
         ],
         "routine_examples": [
             "Scheduling repair",
@@ -42,11 +42,11 @@ INDUSTRY_DEFAULTS = {
     "electrical": {
         "industry_label": "Electrical",
         "emergency_examples": [
-            "Sparking from panel",
-            "Burning smell from wiring",
-            "Total power loss",
-            "Exposed wiring",
-            "Electrical fire risk",
+            "Sparking outlet",
+            "Burning smell from panel",
+            "Power outage in part of house",
+            "Exposed wires",
+            "Breaker won't reset",
         ],
         "routine_examples": [
             "Scheduling inspection",

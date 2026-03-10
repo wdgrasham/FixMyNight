@@ -18,7 +18,7 @@ class Client(Base):
     owner_name = Column(String, nullable=False)
     owner_phone = Column(String, nullable=False)
     contact_email = Column(String)
-    industry = Column(String, nullable=False, default="general")
+    industry = Column(String, nullable=False, default="hvac")
     industry_config = Column(JSONB, nullable=False, default=dict)
     twilio_number = Column(String, unique=True, nullable=False)
     vapi_assistant_id = Column(String)

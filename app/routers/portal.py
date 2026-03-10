@@ -55,6 +55,7 @@ VAPI_REBUILD_TRIGGERS = {
     "sleep_window_end",
     "business_hours_emergency_dispatch",
     "business_name",
+    "industry",
     "industry_config",
     "agent_name",
 }
@@ -268,6 +269,7 @@ async def get_settings(
         "summary_send_time": client.summary_send_time,
         "callback_expected_time": client.callback_expected_time,
         "agent_name": client.agent_name,
+        "industry": client.industry,
         "business_hours_schedule": client.business_hours_schedule,
     }
 

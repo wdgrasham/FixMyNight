@@ -94,7 +94,7 @@ class ClientCreate(BaseModel):
     owner_phone: str
     contact_email: Optional[EmailStr] = None
     timezone: str = "America/Chicago"
-    industry: str = "general"
+    industry: str = "hvac"
     industry_config: Optional[dict] = None
     emergency_enabled: bool = False
     emergency_fee: Optional[Decimal] = None

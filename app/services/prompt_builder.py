@@ -42,6 +42,9 @@ def build_sarah_prompt(client, time_window: str = "evening") -> str:
     agent_name = client.agent_name or config.get("agent_name", "Sarah")
     service_noun = config.get("service_noun", "service")
     tech_title = config.get("tech_title", "technician")
+    industry_label = config.get("industry_label", "General")
+    emergency_examples = config.get("emergency_examples", [])
+    emergency_examples_str = ", ".join(emergency_examples) if emergency_examples else "urgent situations"
 
     callback_time = (
         _format_time_12h(client.callback_expected_time)
@@ -60,9 +63,10 @@ def build_sarah_prompt(client, time_window: str = "evening") -> str:
     if client.emergency_fee:
         fee_display = f"${client.emergency_fee:.2f}"
 
-    # Emergency Pity
+    # Emergency Pity + universal safety disclaimer (Architecture Rule #7)
     emergency_pity = (
-        'I am sorry that you are having an issue.'
+        "I am sorry that you are having an issue. "
+        "If you feel the situation may be unsafe, please don't hesitate to contact your local emergency services."
     )
 
     # --- Build emergency section based on time window + client config ---
@@ -126,6 +130,13 @@ def build_sarah_prompt(client, time_window: str = "evening") -> str:
 
 YOUR ROLE:
 You answer after-hours calls professionally. You determine if the caller has an emergency or a routine matter, collect their information, and either transfer them to the on-call {tech_title} or log the call for a morning callback. You are an answering service — you do not diagnose {service_noun} issues, dispatch {tech_title}s yourself, or make promises beyond what is scripted here.
+
+---
+
+INDUSTRY CONTEXT:
+{client.business_name} is a {industry_label} company. You ONLY handle {service_noun} calls.
+Common emergencies for this industry: {emergency_examples_str}.
+If a caller describes an issue clearly outside of {service_noun}, they likely have the wrong number.
 
 ---
 

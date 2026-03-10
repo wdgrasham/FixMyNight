@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { api, ApiError } from '../../api';
 import { ROUTES } from '../../routes';
 import type { Client, Technician } from '../../types';
-import { DAY_KEYS, DAY_LABELS, defaultSchedule } from '../../types';
+import { DAY_KEYS, DAY_LABELS, defaultSchedule, industryLabel, INDUSTRY_LABELS } from '../../types';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import ErrorBanner from '../../components/ErrorBanner';
 import StatusBadge from '../../components/StatusBadge';
@@ -267,7 +267,7 @@ export default function ClientDetail() {
               </div>
               <dl className="space-y-3 text-sm pt-2 border-t border-gray-100">
                 <div><dt className="text-gray-500">Timezone</dt><dd className="text-gray-900">{({ 'America/New_York': 'Eastern (ET)', 'America/Chicago': 'Central (CT)', 'America/Denver': 'Mountain (MT)', 'America/Los_Angeles': 'Pacific (PT)', 'America/Phoenix': 'Arizona (no DST)', 'America/Anchorage': 'Alaska (AKT)', 'Pacific/Honolulu': 'Hawaii (HT)' } as Record<string, string>)[client.timezone] || client.timezone}</dd></div>
-                <div><dt className="text-gray-500">Industry</dt><dd className="text-gray-900">{client.industry}</dd></div>
+                <div><dt className="text-gray-500">Industry</dt><dd className="text-gray-900">{industryLabel(client.industry)}</dd></div>
                 <div><dt className="text-gray-500">Agent Name</dt><dd className="text-gray-900">{client.agent_name}</dd></div>
                 <div><dt className="text-gray-500">Emergency Dispatch</dt><dd className="text-gray-900">{client.emergency_enabled ? `ON${client.emergency_fee ? ` ($${client.emergency_fee} fee)` : ''}` : 'OFF'}</dd></div>
                 <div>
@@ -307,7 +307,7 @@ export default function ClientDetail() {
               <div><dt className="text-gray-500">Phone</dt><dd className="text-gray-900">{formatPhoneDisplay(client.owner_phone)}</dd></div>
               <div><dt className="text-gray-500">Email</dt><dd className="text-gray-900">{client.contact_email}</dd></div>
               <div><dt className="text-gray-500">Timezone</dt><dd className="text-gray-900">{({ 'America/New_York': 'Eastern (ET)', 'America/Chicago': 'Central (CT)', 'America/Denver': 'Mountain (MT)', 'America/Los_Angeles': 'Pacific (PT)', 'America/Phoenix': 'Arizona (no DST)', 'America/Anchorage': 'Alaska (AKT)', 'Pacific/Honolulu': 'Hawaii (HT)' } as Record<string, string>)[client.timezone] || client.timezone}</dd></div>
-              <div><dt className="text-gray-500">Industry</dt><dd className="text-gray-900">{client.industry}</dd></div>
+              <div><dt className="text-gray-500">Industry</dt><dd className="text-gray-900">{industryLabel(client.industry)}</dd></div>
               <div><dt className="text-gray-500">Agent Name</dt><dd className="text-gray-900">{client.agent_name}</dd></div>
               <div><dt className="text-gray-500">Emergency Dispatch</dt><dd className="text-gray-900">{client.emergency_enabled ? `ON${client.emergency_fee ? ` ($${client.emergency_fee} fee)` : ''}` : 'OFF'}</dd></div>
               <div>
@@ -352,8 +352,8 @@ export default function ClientDetail() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Industry</label>
                   <select value={editData.industry || 'general'} onChange={(e) => setEditData({ ...editData, industry: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#F59E0B]">
-                    {['hvac', 'plumbing', 'electrical', 'locksmith', 'pest_control', 'roofing', 'appliance_repair', 'general_contractor', 'property_management', 'general'].map((ind) => (
-                      <option key={ind} value={ind}>{ind.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}</option>
+                    {Object.keys(INDUSTRY_LABELS).map((ind) => (
+                      <option key={ind} value={ind}>{INDUSTRY_LABELS[ind]}</option>
                     ))}
                   </select>
                 </div>

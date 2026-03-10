@@ -35,6 +35,22 @@ export function defaultSchedule(): BusinessHoursSchedule {
   };
 }
 
+export const INDUSTRY_LABELS: Record<string, string> = {
+  hvac: 'HVAC',
+  plumbing: 'Plumbing',
+  electrical: 'Electrical',
+  locksmith: 'Locksmith',
+  general_contractor: 'General Contractor',
+  garage_door: 'Garage Door Repair',
+  glass_window: 'Glass / Window Repair',
+  general: 'General',
+};
+
+export function industryLabel(slug: string | undefined | null): string {
+  if (!slug) return '—';
+  return INDUSTRY_LABELS[slug] ?? slug.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 export interface Client {
   id: string;
   business_name: string;

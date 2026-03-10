@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../../api';
 import type { Client, PortalSettingsPayload, BusinessHoursSchedule } from '../../types';
-import { defaultSchedule } from '../../types';
+import { defaultSchedule, industryLabel } from '../../types';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import ErrorBanner from '../../components/ErrorBanner';
 import TimePicker from '../../components/TimePicker';
@@ -166,7 +166,7 @@ export default function PortalSettings() {
             </div>
             <div>
               <dt className="text-gray-500">Industry</dt>
-              <dd className="text-gray-900">{(settings as Record<string, unknown>).industry ? String((settings as Record<string, unknown>).industry).replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) : '—'}</dd>
+              <dd className="text-gray-900">{industryLabel((settings as Record<string, unknown>).industry as string)}</dd>
             </div>
             <div>
               <dt className="text-gray-500">Agent Name</dt>

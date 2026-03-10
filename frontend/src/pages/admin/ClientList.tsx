@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../../api';
 import { ROUTES } from '../../routes';
 import type { Client } from '../../types';
+import { industryLabel } from '../../types';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import ErrorBanner from '../../components/ErrorBanner';
 import StatusBadge from '../../components/StatusBadge';
@@ -84,7 +85,7 @@ export default function ClientList() {
                     </Link>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-700">{client.owner_name}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{client.industry?.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) || '—'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-700">{industryLabel(client.industry)}</td>
                   <td className="px-4 py-3"><StatusBadge status={client.status} /></td>
                   <td className="px-4 py-3 text-sm text-gray-700">
                     {client.twilio_number ? formatPhoneDisplay(client.twilio_number) : '—'}

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Download, Mail, Scale, ExternalLink, ArrowLeft, CheckCircle, Pencil, Check, X, AlertTriangle, HelpCircle, FileText, MessageSquare, Info } from 'lucide-react';
+import { Download, Mail, Scale, ExternalLink, ArrowLeft, CheckCircle, Pencil, Check, X, AlertTriangle, HelpCircle, FileText, MessageSquare, Info, BookOpen } from 'lucide-react';
 import { ROUTES } from '../../routes';
 
 const API_BASE = 'https://casereview-api-production.up.railway.app';
@@ -13,6 +13,7 @@ interface AnalysisResult {
   next_steps: string[];
   information_gaps?: string[];
   general_info?: string[];
+  legal_concepts?: { term: string; explanation: string }[];
   attorney_questions?: string[];
   relevant_documents?: string[];
 }
@@ -326,6 +327,25 @@ export default function CaseResults() {
                   </li>
                 ))}
               </ul>
+            </div>
+          )}
+
+          {/* Key Legal Concepts */}
+          {r.legal_concepts && r.legal_concepts.length > 0 && (
+            <div className="rounded-lg border border-[#E2E8F0] bg-white p-5">
+              <div className="flex items-center gap-2 mb-1">
+                <BookOpen className="h-4 w-4 text-[#0F172A]" />
+                <p className="text-sm font-medium text-[#64748B]">Key Legal Concepts</p>
+              </div>
+              <p className="text-xs text-[#94A3B8] mb-4 italic">The following legal concepts may come up when discussing your case with an attorney:</p>
+              <div className="space-y-3">
+                {r.legal_concepts.map((concept, i) => (
+                  <div key={i} className="border-l-2 border-[#F59E0B] pl-3">
+                    <p className="text-sm font-semibold text-[#0F172A]">{concept.term}</p>
+                    <p className="text-sm text-[#475569] mt-0.5 leading-relaxed">{concept.explanation}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

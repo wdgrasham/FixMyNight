@@ -1,19 +1,29 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Download, Mail, Scale, ExternalLink, ArrowLeft, CheckCircle, Pencil, Check, X } from 'lucide-react';
+import { Download, Mail, Scale, ExternalLink, ArrowLeft, CheckCircle, Pencil, Check, X, AlertTriangle, HelpCircle, FileText, MessageSquare, Info } from 'lucide-react';
 import { ROUTES } from '../../routes';
 
 const API_BASE = 'https://casereview-api-production.up.railway.app';
 
-interface CaseSession {
+interface AnalysisResult {
+  facts: string[];
+  strength: 'Strong' | 'Medium' | 'Weak';
+  reasoning: string;
+  case_type: string;
+  next_steps: string[];
+  information_gaps?: string[];
+  general_info?: string[];
+  attorney_questions?: string[];
+  relevant_documents?: string[];
+}
+
+interface ApiSession {
   session_id: string;
+  payment_status: string;
   analysis_status: 'pending' | 'processing' | 'completed' | 'failed';
-  case_strength?: 'Strong' | 'Medium' | 'Weak';
-  area_of_law?: string;
-  key_facts?: string[];
-  next_steps?: string[];
-  summary?: string;
-  edits_remaining?: number;
+  analysis_result: AnalysisResult | null;
+  update_count: number;
+  email_sent: boolean;
 }
 
 const strengthColors: Record<string, { bg: string; text: string; border: string }> = {
@@ -26,7 +36,7 @@ export default function CaseResults() {
   const [searchParams] = useSearchParams();
   const sessionId = searchParams.get('session_id');
 
-  const [session, setSession] = useState<CaseSession | null>(null);
+  const [session, setSession] = useState<ApiSession | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,7 +61,6 @@ export default function CaseResults() {
   const fetchSession = useCallback(async () => {
     if (!sessionId) return;
 
-    // Timeout after 5 minutes of polling
     if (Date.now() - pollStartRef.current > POLL_TIMEOUT) {
       stopPolling();
       setError('This is taking longer than expected. Your payment was received — please check back shortly or contact support.');
@@ -66,7 +75,7 @@ export default function CaseResults() {
       if (res.status === 403) return;
 
       if (!res.ok) throw new Error(`Failed to load results (${res.status})`);
-      const data: CaseSession = await res.json();
+      const data: ApiSession = await res.json();
       setSession(data);
 
       if (data.analysis_status === 'completed' || data.analysis_status === 'failed') {
@@ -117,30 +126,34 @@ export default function CaseResults() {
   };
 
   const handleSaveEdit = async (index: number) => {
-    if (!sessionId || !session?.key_facts) return;
-    const updated = [...session.key_facts];
+    if (!sessionId || !session?.analysis_result?.facts) return;
+    const updated = [...session.analysis_result.facts];
     updated[index] = editValue.trim();
 
     try {
       const res = await fetch(`${API_BASE}/api/case/update-summary`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: sessionId, key_facts: updated }),
+        body: JSON.stringify({ session_id: sessionId, facts: updated }),
       });
       if (!res.ok) throw new Error('Failed to save edit');
       const data = await res.json();
-      setSession((prev) => prev ? {
-        ...prev,
-        key_facts: data.key_facts ?? updated,
-        edits_remaining: data.edits_remaining ?? (prev.edits_remaining != null ? prev.edits_remaining - 1 : 0),
-      } : prev);
+      setSession((prev) => {
+        if (!prev?.analysis_result) return prev;
+        return {
+          ...prev,
+          update_count: data.update_count ?? prev.update_count + 1,
+          analysis_result: { ...prev.analysis_result, facts: updated },
+        };
+      });
     } catch {
-      // Revert silently — the API may reject if edits exhausted
+      // Revert silently
     }
     setEditingIndex(null);
   };
 
-  const canEdit = session?.edits_remaining == null || session.edits_remaining > 0;
+  const editsRemaining = session ? 2 - session.update_count : 2;
+  const canEdit = editsRemaining > 0;
 
   // No session ID
   if (!sessionId) {
@@ -190,9 +203,10 @@ export default function CaseResults() {
     );
   }
 
-  if (!session) return null;
+  if (!session?.analysis_result) return null;
 
-  const strength = session.case_strength || 'Medium';
+  const r = session.analysis_result;
+  const strength = r.strength || 'Medium';
   const colors = strengthColors[strength] || strengthColors.Medium;
 
   return (
@@ -201,10 +215,10 @@ export default function CaseResults() {
         {/* Header */}
         <div className="text-center mb-10">
           <h1 className="text-3xl font-bold tracking-tight text-[#0F172A] sm:text-4xl">
-            Your Case Evaluation
+            Your Case Information Summary
           </h1>
           <p className="mt-2 text-sm text-[#94A3B8]">
-            AI-generated analysis &mdash; not legal advice
+            For informational purposes only &mdash; not legal advice
           </p>
         </div>
 
@@ -212,47 +226,51 @@ export default function CaseResults() {
           {/* Attorney callout */}
           <div className="rounded-lg border border-[#D1FAE5] bg-[#ECFDF5] p-5">
             <p className="text-sm text-[#065F46] leading-relaxed">
-              <span className="font-semibold">Take this report to your attorney.</span> Your facts are organized, your case strength is assessed, and your next steps are clear. This saves time in both free consultations and paid sessions.
+              <span className="font-semibold">Take this report to your attorney.</span> Your facts are organized, your case strength is estimated, and your next steps are clear. This saves time in both free consultations and paid sessions.
             </p>
           </div>
 
-          {/* Case Strength Badge */}
+          {/* Disclaimer */}
+          <div className="rounded-lg border border-amber-300 bg-[#FFFBEB] px-4 py-3 flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-[#D97706] shrink-0 mt-0.5" />
+            <p className="text-sm text-[#92400E]">
+              <span className="font-semibold">NOT LEGAL ADVICE.</span> This report organizes information you provided for informational purposes only. It does not constitute legal advice or create an attorney-client relationship. Consult a licensed attorney for advice specific to your situation.
+            </p>
+          </div>
+
+          {/* Case Strength Estimate */}
           <div className={`rounded-lg border ${colors.border} ${colors.bg} p-6 text-center`}>
-            <p className="text-sm font-medium text-[#64748B] mb-2">Case Strength Assessment</p>
+            <p className="text-sm font-medium text-[#64748B] mb-2">Case Strength Estimate</p>
             <span className={`inline-block text-3xl font-bold ${colors.text}`}>
               {strength}
             </span>
+            {r.reasoning && (
+              <p className="mt-3 text-sm text-[#475569] max-w-lg mx-auto">{r.reasoning}</p>
+            )}
           </div>
 
-          {/* Area of Law */}
-          {session.area_of_law && (
+          {/* Likely Area of Law */}
+          {r.case_type && (
             <div className="rounded-lg border border-[#E2E8F0] bg-white p-5">
-              <p className="text-sm font-medium text-[#64748B] mb-1">Area of Law</p>
-              <p className="text-lg font-semibold text-[#0F172A]">{session.area_of_law}</p>
+              <p className="text-sm font-medium text-[#64748B] mb-1">Likely Area of Law</p>
+              <p className="text-lg font-semibold text-[#0F172A]">{r.case_type}</p>
             </div>
           )}
 
-          {/* Summary */}
-          {session.summary && (
+          {/* Established Facts */}
+          {r.facts && r.facts.length > 0 && (
             <div className="rounded-lg border border-[#E2E8F0] bg-white p-5">
-              <p className="text-sm font-medium text-[#64748B] mb-2">Summary</p>
-              <p className="text-sm text-[#334155] leading-relaxed">{session.summary}</p>
-            </div>
-          )}
-
-          {/* Key Facts */}
-          {session.key_facts && session.key_facts.length > 0 && (
-            <div className="rounded-lg border border-[#E2E8F0] bg-white p-5">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-medium text-[#64748B]">Key Facts Summary</p>
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-sm font-medium text-[#64748B]">Established Facts</p>
                 {canEdit && (
                   <span className="text-xs text-[#94A3B8]">
-                    Click a fact to edit ({session.edits_remaining ?? 2} edit{(session.edits_remaining ?? 2) !== 1 ? 's' : ''} remaining)
+                    Click to edit ({editsRemaining} edit{editsRemaining !== 1 ? 's' : ''} remaining)
                   </span>
                 )}
               </div>
+              <p className="text-xs text-[#94A3B8] mb-3 italic">Organized from the information you provided.</p>
               <ul className="space-y-2">
-                {session.key_facts.map((fact, i) => (
+                {r.facts.map((fact, i) => (
                   <li key={i}>
                     {editingIndex === i ? (
                       <div className="flex items-start gap-2">
@@ -267,30 +285,17 @@ export default function CaseResults() {
                             if (e.key === 'Escape') setEditingIndex(null);
                           }}
                         />
-                        <button
-                          type="button"
-                          onClick={() => handleSaveEdit(i)}
-                          className="text-green-600 hover:text-green-700 p-1"
-                        >
+                        <button type="button" onClick={() => handleSaveEdit(i)} className="text-green-600 hover:text-green-700 p-1">
                           <Check className="h-4 w-4" />
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => setEditingIndex(null)}
-                          className="text-[#94A3B8] hover:text-red-500 p-1"
-                        >
+                        <button type="button" onClick={() => setEditingIndex(null)} className="text-[#94A3B8] hover:text-red-500 p-1">
                           <X className="h-4 w-4" />
                         </button>
                       </div>
                     ) : (
                       <div
                         className={`flex items-start gap-2.5 group ${canEdit ? 'cursor-pointer' : ''}`}
-                        onClick={() => {
-                          if (canEdit) {
-                            setEditingIndex(i);
-                            setEditValue(fact);
-                          }
-                        }}
+                        onClick={() => { if (canEdit) { setEditingIndex(i); setEditValue(fact); } }}
                       >
                         <CheckCircle className="h-4 w-4 text-[#F59E0B] shrink-0 mt-0.5" />
                         <span className="text-sm text-[#334155] flex-1">{fact}</span>
@@ -305,12 +310,91 @@ export default function CaseResults() {
             </div>
           )}
 
-          {/* Next Steps */}
-          {session.next_steps && session.next_steps.length > 0 && (
+          {/* Information Gaps */}
+          {r.information_gaps && r.information_gaps.length > 0 && (
             <div className="rounded-lg border border-[#E2E8F0] bg-white p-5">
-              <p className="text-sm font-medium text-[#64748B] mb-3">Recommended Next Steps</p>
+              <div className="flex items-center gap-2 mb-1">
+                <HelpCircle className="h-4 w-4 text-[#F59E0B]" />
+                <p className="text-sm font-medium text-[#64748B]">Information Gaps</p>
+              </div>
+              <p className="text-xs text-[#94A3B8] mb-3 italic">An attorney reviewing your case may ask about the following:</p>
+              <ul className="space-y-2">
+                {r.information_gaps.map((gap, i) => (
+                  <li key={i} className="flex items-start gap-2.5">
+                    <span className="text-[#D97706] shrink-0 mt-0.5 text-sm font-bold">?</span>
+                    <span className="text-sm text-[#334155]">{gap}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* General Information */}
+          {r.general_info && r.general_info.length > 0 && (
+            <div className="rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-5">
+              <div className="flex items-center gap-2 mb-1">
+                <Info className="h-4 w-4 text-[#64748B]" />
+                <p className="text-sm font-medium text-[#64748B]">General Information About This Type of Case</p>
+              </div>
+              <p className="text-xs text-[#94A3B8] mb-3 italic">General public information, not advice specific to your case.</p>
+              <ul className="space-y-2">
+                {r.general_info.map((info, i) => (
+                  <li key={i} className="flex items-start gap-2.5">
+                    <span className="text-[#94A3B8] shrink-0 mt-1 text-xs">&#9679;</span>
+                    <span className="text-sm text-[#334155]">{info}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Attorney Questions */}
+          {r.attorney_questions && r.attorney_questions.length > 0 && (
+            <div className="rounded-lg border border-[#E2E8F0] bg-white p-5">
+              <div className="flex items-center gap-2 mb-1">
+                <MessageSquare className="h-4 w-4 text-[#F59E0B]" />
+                <p className="text-sm font-medium text-[#64748B]">Questions to Discuss With an Attorney</p>
+              </div>
+              <ol className="space-y-2 mt-3">
+                {r.attorney_questions.map((q, i) => (
+                  <li key={i} className="flex items-start gap-3">
+                    <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-[#F59E0B]/10 text-xs font-semibold text-[#D97706] shrink-0 mt-0.5">
+                      {i + 1}
+                    </span>
+                    <span className="text-sm text-[#334155]">{q}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+
+          {/* Relevant Documents */}
+          {r.relevant_documents && r.relevant_documents.length > 0 && (
+            <div className="rounded-lg border border-[#E2E8F0] bg-white p-5">
+              <div className="flex items-center gap-2 mb-1">
+                <FileText className="h-4 w-4 text-[#64748B]" />
+                <p className="text-sm font-medium text-[#64748B]">Documents and Evidence to Gather</p>
+              </div>
+              <p className="text-xs text-[#94A3B8] mb-3 italic">
+                Documents commonly relevant in {r.case_type || 'this type of'} cases:
+              </p>
+              <ul className="space-y-2">
+                {r.relevant_documents.map((doc, i) => (
+                  <li key={i} className="flex items-start gap-2.5">
+                    <span className="text-[#94A3B8] shrink-0 mt-1 text-xs">&#9679;</span>
+                    <span className="text-sm text-[#334155]">{doc}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Suggested Next Steps */}
+          {r.next_steps && r.next_steps.length > 0 && (
+            <div className="rounded-lg border border-[#E2E8F0] bg-white p-5">
+              <p className="text-sm font-medium text-[#64748B] mb-3">Suggested Next Steps</p>
               <ol className="space-y-2">
-                {session.next_steps.map((step, i) => (
+                {r.next_steps.map((step, i) => (
                   <li key={i} className="flex items-start gap-3">
                     <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-[#F59E0B]/10 text-xs font-semibold text-[#D97706] shrink-0 mt-0.5">
                       {i + 1}
@@ -326,7 +410,6 @@ export default function CaseResults() {
           <div className="rounded-lg border border-[#E2E8F0] bg-white p-5 space-y-4">
             <p className="text-sm font-medium text-[#64748B]">Get Your Results</p>
 
-            {/* Email */}
             {emailSent ? (
               <div className="flex items-center gap-2 text-sm text-green-600">
                 <CheckCircle className="h-4 w-4" />
@@ -358,7 +441,6 @@ export default function CaseResults() {
             )}
             {emailError && <p className="text-sm text-red-600">{emailError}</p>}
 
-            {/* Download + Find Lawyers */}
             <div className="flex flex-col sm:flex-row gap-3">
               <a
                 href={`${API_BASE}/api/case/download-pdf/${sessionId}`}
@@ -380,10 +462,16 @@ export default function CaseResults() {
             </div>
           </div>
 
-          {/* Privacy notice */}
+          {/* Bottom disclaimer + privacy */}
+          <div className="rounded-lg border border-amber-200 bg-[#FFFBEB] px-4 py-3">
+            <p className="text-xs text-[#92400E]">
+              <span className="font-semibold">Reminder:</span> This report is for informational purposes only and does not constitute legal advice. The strength estimate is a general assessment, not a legal determination. Consult a licensed attorney for advice specific to your situation.
+            </p>
+          </div>
+
           <div className="text-center space-y-4">
             <p className="text-xs text-[#94A3B8]">
-              Your data is automatically deleted after 24 hours. This analysis is not legal advice.
+              Your data is automatically deleted after 24 hours.
             </p>
             <Link
               to={ROUTES.LANDING}

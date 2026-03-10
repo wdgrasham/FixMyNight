@@ -41,25 +41,44 @@ export default function CaseResults() {
   const [editValue, setEditValue] = useState('');
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollStartRef = useRef(Date.now());
+  const POLL_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+
+  const stopPolling = useCallback(() => {
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+  }, []);
 
   const fetchSession = useCallback(async () => {
     if (!sessionId) return;
+
+    // Timeout after 5 minutes of polling
+    if (Date.now() - pollStartRef.current > POLL_TIMEOUT) {
+      stopPolling();
+      setError('This is taking longer than expected. Your payment was received — please check back shortly or contact support.');
+      setLoading(false);
+      return;
+    }
+
     try {
       const res = await fetch(`${API_BASE}/api/case/session/${sessionId}`);
+
+      // 403 = payment not yet confirmed by webhook — keep polling
+      if (res.status === 403) return;
+
       if (!res.ok) throw new Error(`Failed to load results (${res.status})`);
       const data: CaseSession = await res.json();
       setSession(data);
 
       if (data.analysis_status === 'completed' || data.analysis_status === 'failed') {
-        if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+        stopPolling();
         setLoading(false);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load results');
       setLoading(false);
-      if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+      stopPolling();
     }
-  }, [sessionId]);
+  }, [sessionId, stopPolling]);
 
   useEffect(() => {
     if (!sessionId) {
@@ -68,13 +87,12 @@ export default function CaseResults() {
       return;
     }
 
+    pollStartRef.current = Date.now();
     fetchSession();
     pollRef.current = setInterval(fetchSession, 3000);
 
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-    };
-  }, [sessionId, fetchSession]);
+    return () => { stopPolling(); };
+  }, [sessionId, fetchSession, stopPolling]);
 
   const handleSendEmail = async () => {
     if (!email.trim() || !sessionId || emailSending) return;
@@ -148,9 +166,13 @@ export default function CaseResults() {
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
           </svg>
-          <span className="text-lg font-medium text-[#0F172A]">Analyzing your case…</span>
+          <span className="text-lg font-medium text-[#0F172A]">
+            {session ? 'Analyzing your case…' : 'Confirming payment…'}
+          </span>
         </div>
-        <p className="text-sm text-[#94A3B8]">This usually takes 1–2 minutes.</p>
+        <p className="text-sm text-[#94A3B8]">
+          {session ? 'This usually takes 1–2 minutes.' : 'Waiting for payment confirmation, then analysis will begin.'}
+        </p>
       </div>
     );
   }

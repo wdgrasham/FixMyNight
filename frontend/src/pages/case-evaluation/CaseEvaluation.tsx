@@ -24,9 +24,7 @@ export default function CaseEvaluation() {
     try {
       // Step 1: Create session with FormData
       const formData = new FormData();
-      if (description.trim()) {
-        formData.append('description', description.trim());
-      }
+      formData.append('case_description', description.trim());
       files.forEach((file) => {
         formData.append('files', file);
       });
@@ -42,11 +40,7 @@ export default function CaseEvaluation() {
       if (!sessionRes.ok) {
         const errData = await sessionRes.json().catch(() => null);
         console.error('create-session error:', sessionRes.status, errData);
-        const detail = errData?.detail;
-        const msg = typeof detail === 'string' ? detail
-          : detail ? JSON.stringify(detail)
-          : `Upload failed (${sessionRes.status})`;
-        throw new Error(msg);
+        throw new Error('Something went wrong. Please try again.');
       }
 
       const { session_id } = await sessionRes.json();
@@ -61,11 +55,7 @@ export default function CaseEvaluation() {
       if (!checkoutRes.ok) {
         const errData = await checkoutRes.json().catch(() => null);
         console.error('create-checkout error:', checkoutRes.status, errData);
-        const detail = errData?.detail;
-        const msg = typeof detail === 'string' ? detail
-          : detail ? JSON.stringify(detail)
-          : `Checkout failed (${checkoutRes.status})`;
-        throw new Error(msg);
+        throw new Error('Something went wrong. Please try again.');
       }
 
       const { checkout_url } = await checkoutRes.json();

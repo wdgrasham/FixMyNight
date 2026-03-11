@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Download, Mail, Scale, ExternalLink, ArrowLeft, CheckCircle, Pencil, Check, X, AlertTriangle, HelpCircle, FileText, MessageSquare, Info, BookOpen } from 'lucide-react';
+import { Download, Scale, ExternalLink, ArrowLeft, CheckCircle, Pencil, Check, X, AlertTriangle, HelpCircle, FileText, MessageSquare, Info, BookOpen, Mail } from 'lucide-react';
 import { ROUTES } from '../../routes';
 
 const API_BASE = 'https://casereview-api-production.up.railway.app';
@@ -35,13 +35,6 @@ export default function CaseResults() {
   const [session, setSession] = useState<ApiSession | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Email state (for "send to another email")
-  const [showAltEmail, setShowAltEmail] = useState(false);
-  const [altEmail, setAltEmail] = useState('');
-  const [altEmailSending, setAltEmailSending] = useState(false);
-  const [altEmailSent, setAltEmailSent] = useState(false);
-  const [altEmailError, setAltEmailError] = useState<string | null>(null);
 
   // Inline editing state
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -99,28 +92,6 @@ export default function CaseResults() {
 
     return () => { stopPolling(); };
   }, [sessionId, fetchSession, stopPolling]);
-
-  const handleSendAltEmail = async () => {
-    if (!altEmail.trim() || !sessionId || altEmailSending) return;
-    setAltEmailSending(true);
-    setAltEmailError(null);
-    try {
-      const res = await fetch(`${API_BASE}/api/case/send-email`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: sessionId, email: altEmail.trim() }),
-      });
-      if (!res.ok) {
-        const errData = await res.json().catch(() => null);
-        throw new Error(errData?.detail || 'Failed to send email');
-      }
-      setAltEmailSent(true);
-    } catch (err) {
-      setAltEmailError(err instanceof Error ? err.message : 'Failed to send email');
-    } finally {
-      setAltEmailSending(false);
-    }
-  };
 
   const handleSaveEdit = async (index: number) => {
     if (!sessionId || !session?.analysis_result?.facts) return;
@@ -218,10 +189,13 @@ export default function CaseResults() {
         </div>
 
         <div className="space-y-6">
-          {/* Attorney callout */}
-          <div className="rounded-lg border border-[#D1FAE5] bg-[#ECFDF5] p-5">
+          {/* Thank you + attorney tip */}
+          <div className="rounded-lg border border-[#D1FAE5] bg-[#ECFDF5] p-5 space-y-2">
             <p className="text-sm text-[#065F46] leading-relaxed">
-              <span className="font-semibold">Take this report to your attorney.</span> Your facts are organized, your case strength is estimated, and your next steps are clear. This saves time in both free consultations and paid sessions.
+              <span className="font-semibold">Thank you for your purchase!</span> Your case information has been analyzed and your report is ready.
+            </p>
+            <p className="text-sm text-[#065F46] leading-relaxed">
+              Take this report to your attorney. Your facts are organized and your next steps are clear. This saves time in both free consultations and paid sessions.
             </p>
           </div>
 
@@ -413,57 +387,18 @@ export default function CaseResults() {
           <div className="rounded-lg border border-[#E2E8F0] bg-white p-5 space-y-4">
             <p className="text-sm font-medium text-[#64748B]">Get Your Report</p>
 
-            {/* Auto-email confirmation */}
-            {session.email_sent && session.user_email && (
+            {/* Email confirmation */}
+            {session.user_email ? (
+              <div className="flex items-center gap-2 text-sm text-green-600">
+                <Mail className="h-4 w-4 shrink-0" />
+                <span>Your PDF report has been sent to <strong>{session.user_email}</strong>. Check your inbox.</span>
+              </div>
+            ) : session.email_sent ? (
               <div className="flex items-center gap-2 text-sm text-green-600">
                 <CheckCircle className="h-4 w-4 shrink-0" />
-                <span>PDF report sent to <strong>{session.user_email}</strong></span>
+                <span>Your PDF report has been emailed to you.</span>
               </div>
-            )}
-
-            {/* Send to another email */}
-            {altEmailSent ? (
-              <div className="flex items-center gap-2 text-sm text-green-600">
-                <CheckCircle className="h-4 w-4 shrink-0" />
-                <span>PDF also sent to <strong>{altEmail}</strong></span>
-              </div>
-            ) : showAltEmail ? (
-              <div className="space-y-2">
-                <div className="flex gap-2">
-                  <input
-                    type="email"
-                    value={altEmail}
-                    onChange={(e) => setAltEmail(e.target.value)}
-                    placeholder="Enter another email address"
-                    className="flex-1 rounded-lg border border-[#CBD5E1] px-3 py-2.5 text-sm text-[#0F172A] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#F59E0B]"
-                    onKeyDown={(e) => { if (e.key === 'Enter') handleSendAltEmail(); }}
-                  />
-                  <button
-                    type="button"
-                    onClick={handleSendAltEmail}
-                    disabled={!altEmail.trim() || altEmailSending}
-                    className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
-                      altEmail.trim() && !altEmailSending
-                        ? 'bg-[#F59E0B] text-[#0F172A] hover:bg-[#D97706]'
-                        : 'bg-[#E2E8F0] text-[#94A3B8] cursor-not-allowed'
-                    }`}
-                  >
-                    <Mail className="h-4 w-4" />
-                    {altEmailSending ? 'Sending…' : 'Send'}
-                  </button>
-                </div>
-                {altEmailError && <p className="text-sm text-red-600">{altEmailError}</p>}
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setShowAltEmail(true)}
-                className="inline-flex items-center gap-1.5 text-sm text-[#F59E0B] hover:text-[#D97706] transition-colors"
-              >
-                <Mail className="h-3.5 w-3.5" />
-                Send to a different email
-              </button>
-            )}
+            ) : null}
 
             <div className="flex flex-col sm:flex-row gap-3">
               <a
@@ -489,7 +424,7 @@ export default function CaseResults() {
           {/* Bottom disclaimer + privacy */}
           <div className="rounded-lg border border-amber-200 bg-[#FFFBEB] px-4 py-3">
             <p className="text-xs text-[#92400E]">
-              <span className="font-semibold">Reminder:</span> This report is for informational purposes only and does not constitute legal advice. The strength estimate is a general assessment, not a legal determination. Consult a licensed attorney for advice specific to your situation.
+              <span className="font-semibold">Reminder:</span> This report is for informational purposes only and does not constitute legal advice. It does not create an attorney-client relationship. Consult a licensed attorney for advice specific to your situation.
             </p>
           </div>
 

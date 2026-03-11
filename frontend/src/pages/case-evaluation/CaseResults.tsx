@@ -28,12 +28,6 @@ interface ApiSession {
   user_email: string | null;
 }
 
-const strengthColors: Record<string, { bg: string; text: string; border: string }> = {
-  Strong: { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200' },
-  Medium: { bg: 'bg-yellow-50', text: 'text-yellow-700', border: 'border-yellow-200' },
-  Weak:   { bg: 'bg-red-50',    text: 'text-red-700',    border: 'border-red-200' },
-};
-
 export default function CaseResults() {
   const [searchParams] = useSearchParams();
   const sessionId = searchParams.get('session_id');
@@ -209,8 +203,6 @@ export default function CaseResults() {
   if (!session?.analysis_result) return null;
 
   const r = session.analysis_result;
-  const strength = r.strength;
-  const colors = strengthColors[strength] ?? strengthColors.Medium;
 
   return (
     <div className="py-12 sm:py-20">
@@ -239,17 +231,6 @@ export default function CaseResults() {
             <p className="text-sm text-[#92400E]">
               <span className="font-semibold">NOT LEGAL ADVICE.</span> This report organizes information you provided for informational purposes only. It does not constitute legal advice or create an attorney-client relationship. Consult a licensed attorney for advice specific to your situation.
             </p>
-          </div>
-
-          {/* Case Strength Estimate */}
-          <div className={`rounded-lg border ${colors.border} ${colors.bg} p-6 text-center`}>
-            <p className="text-sm font-medium text-[#64748B] mb-2">Case Strength Estimate</p>
-            <span className={`inline-block text-3xl font-bold ${colors.text}`}>
-              {strength}
-            </span>
-            {r.reasoning && (
-              <p className="mt-3 text-sm text-[#475569] max-w-lg mx-auto">{r.reasoning}</p>
-            )}
           </div>
 
           {/* Likely Area of Law */}

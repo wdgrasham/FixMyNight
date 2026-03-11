@@ -209,8 +209,8 @@ export default function CaseResults() {
   if (!session?.analysis_result) return null;
 
   const r = session.analysis_result;
-  const strength = r.strength || 'Medium';
-  const colors = strengthColors[strength] || strengthColors.Medium;
+  const strength = r.strength;
+  const colors = strengthColors[strength] ?? strengthColors.Medium;
 
   return (
     <div className="py-12 sm:py-20">

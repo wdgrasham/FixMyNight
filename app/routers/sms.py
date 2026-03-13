@@ -54,8 +54,11 @@ async def twilio_sms(request: Request, db: AsyncSession = Depends(get_db)):
     to_number = form_data.get("To")
     body = form_data.get("Body", "").strip().upper()
 
+    print(f"[SMS] From={from_number} To={to_number} Body={body}", flush=True)
+
     client = await _get_client_by_twilio_number(to_number, db)
     if not client:
+        print(f"[SMS] No client for {to_number}", flush=True)
         return Response(content="", media_type="application/xml")
 
     # Look up tech — include unverified techs so first reply can verify them
@@ -70,9 +73,11 @@ async def twilio_sms(request: Request, db: AsyncSession = Depends(get_db)):
 
     # If no tech found, check if sender is the business owner
     is_owner = not tech and from_number == client.owner_phone
+    print(f"[SMS] tech={tech is not None} is_owner={is_owner} owner_phone='{client.owner_phone}' from='{from_number}'", flush=True)
 
     # Unknown sender — silent ignore per Architecture Rule 9
     if not tech and not is_owner:
+        print(f"[SMS] Silent ignore — unknown sender", flush=True)
         return Response(content="", media_type="application/xml")
 
     # Valid commands

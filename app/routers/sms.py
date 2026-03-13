@@ -1,9 +1,12 @@
 """Twilio SMS webhook handler.
 
-Processes on-call management commands from technicians:
+Processes on-call management commands from technicians and business owners:
 - ON: Go on-call (bumps existing on-call tech)
 - OFF: Go off-call
 - STATUS: Reply with current on-call status
+
+Owners can always use STATUS. Owners can use ON/OFF only when they have
+no active technicians registered (single-operator mode).
 
 Unknown senders are silently ignored (Architecture Rule 9).
 """
@@ -65,14 +68,53 @@ async def twilio_sms(request: Request, db: AsyncSession = Depends(get_db)):
     )
     tech = result.scalar_one_or_none()
 
+    # If no tech found, check if sender is the business owner
+    is_owner = not tech and from_number == client.owner_phone
+
     # Unknown sender — silent ignore per Architecture Rule 9
-    if not tech:
+    if not tech and not is_owner:
         return Response(content="", media_type="application/xml")
 
-    # Valid commands from known techs
+    # Valid commands
     if body not in ("ON", "OFF", "STATUS"):
         # Unrecognized message — silent ignore
         return Response(content="", media_type="application/xml")
+
+    # Owner (not in technicians table) handling
+    if is_owner:
+        if body == "STATUS":
+            await _handle_owner_status(client, db)
+            return Response(content="", media_type="application/xml")
+
+        # ON/OFF: only if owner has no active technicians
+        has_techs = await db.execute(
+            select(Technician).where(
+                Technician.client_id == client.id,
+                Technician.is_active == True,
+            )
+        )
+        if has_techs.scalars().first():
+            await send_sms(
+                from_number,
+                "You have technicians registered. Your on-call tech "
+                "can text ON to this number.",
+                from_number=client.twilio_number,
+            )
+            return Response(content="", media_type="application/xml")
+
+        # Single operator — auto-create tech record for owner
+        tech = Technician(
+            client_id=client.id,
+            name=client.owner_name,
+            phone=client.owner_phone,
+            phone_verified=True,
+            verified_at=datetime.utcnow(),
+            is_active=True,
+        )
+        db.add(tech)
+        await db.commit()
+        await db.refresh(tech)
+        # Fall through to normal ON/OFF handling below
 
     # First valid command from unverified tech → verify them
     if not tech.phone_verified:
@@ -135,11 +177,13 @@ async def _handle_on_call_on(tech, client, db):
         .values(on_call=True, on_call_start=datetime.utcnow())
     )
     await db.commit()
-    await send_sms(
-        client.owner_phone,
-        f"{tech.name} is now on-call for {client.business_name}.",
-        from_number=client.twilio_number,
-    )
+    # Skip owner notification if the tech IS the owner (redundant)
+    if tech.phone != client.owner_phone:
+        await send_sms(
+            client.owner_phone,
+            f"{tech.name} is now on-call for {client.business_name}.",
+            from_number=client.twilio_number,
+        )
     await write_audit_log(
         db,
         "tech.on_call_start",
@@ -166,11 +210,13 @@ async def _handle_on_call_off(tech, client, db):
         .values(on_call=False, on_call_end=datetime.utcnow())
     )
     await db.commit()
-    await send_sms(
-        client.owner_phone,
-        f"{tech.name} is no longer on-call for {client.business_name}.",
-        from_number=client.twilio_number,
-    )
+    # Skip owner notification if the tech IS the owner (redundant)
+    if tech.phone != client.owner_phone:
+        await send_sms(
+            client.owner_phone,
+            f"{tech.name} is no longer on-call for {client.business_name}.",
+            from_number=client.twilio_number,
+        )
     await write_audit_log(
         db,
         "tech.on_call_end",
@@ -189,6 +235,18 @@ async def _handle_on_call_off(tech, client, db):
 
 async def _handle_status_request(tech, client, db):
     """Reply with current on-call status."""
+    msg = await _build_status_message(client, db)
+    await send_sms(tech.phone, msg, from_number=client.twilio_number)
+
+
+async def _handle_owner_status(client, db):
+    """Reply with current on-call status to the business owner."""
+    msg = await _build_status_message(client, db)
+    await send_sms(client.owner_phone, msg, from_number=client.twilio_number)
+
+
+async def _build_status_message(client, db) -> str:
+    """Build the on-call status message."""
     result = await db.execute(
         select(Technician).where(
             Technician.client_id == client.id,
@@ -197,7 +255,5 @@ async def _handle_status_request(tech, client, db):
     )
     oncall_tech = result.scalar_one_or_none()
     if oncall_tech:
-        msg = f"{client.business_name} on-call status: {oncall_tech.name} is currently on-call."
-    else:
-        msg = f"{client.business_name} on-call status: No technician is currently on-call."
-    await send_sms(tech.phone, msg, from_number=client.twilio_number)
+        return f"{client.business_name} on-call status: {oncall_tech.name} is currently on-call."
+    return f"{client.business_name} on-call status: No technician is currently on-call."

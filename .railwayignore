@@ -1,0 +1,17 @@
+# Not needed on Railway
+.git/
+.claude/
+.github/
+docs/
+specs/
+scripts/
+*.md
+.env*
+.gitignore
+.railwayignore
+__pycache__/
+*.pyc
+*.zip
+*.htm
+*_files/
+Claude-Code-Best-Practices-Building-Skills.md

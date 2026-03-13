@@ -470,7 +470,7 @@ export default function ClientDetail() {
 
       {/* Technicians */}
       <div className="mt-6 bg-white rounded-lg border border-gray-200 p-6">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">Technicians</h2>
+        <h2 className="text-lg font-medium text-gray-900 mb-4">On-Call Team</h2>
 
         {techError && <ErrorBanner message={techError} onDismiss={() => setTechError('')} />}
 
@@ -486,7 +486,19 @@ export default function ClientDetail() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {techs.filter((t) => t.is_active).map((tech) => (
+            {/* Owner row — permanent, cannot be deleted */}
+            <tr className="bg-amber-50/30">
+              <td className="px-4 py-3 text-sm text-gray-900 font-medium">{client.owner_name} <span className="text-xs text-amber-600 font-normal">(Owner)</span></td>
+              <td className="px-4 py-3 text-sm text-gray-700">{formatPhoneDisplay(client.owner_phone)}</td>
+              <td className="px-4 py-3 text-sm"><span className="text-green-600">—</span></td>
+              <td className="px-4 py-3 text-sm">
+                {techs.find((t) => t.phone === client.owner_phone && t.on_call)
+                  ? <span className="text-green-600 font-medium">On Call</span>
+                  : <span className="text-gray-400">—</span>}
+              </td>
+              <td className="px-4 py-3 text-sm text-gray-400">—</td>
+            </tr>
+            {techs.filter((t) => t.is_active && t.phone !== client.owner_phone).map((tech) => (
               <tr key={tech.id}>
                 <td className="px-4 py-3 text-sm text-gray-900">
                   {editingTechId === tech.id ? <input type="text" value={editTechName} onChange={(e) => setEditTechName(e.target.value)} className="w-full px-2 py-1 border border-gray-300 rounded text-sm" /> : tech.name}
@@ -511,8 +523,8 @@ export default function ClientDetail() {
                 </td>
               </tr>
             ))}
-            {techs.filter((t) => t.is_active).length === 0 && (
-              <tr><td colSpan={5} className="px-4 py-6 text-sm text-gray-500 text-center">No active technicians.</td></tr>
+            {techs.filter((t) => t.is_active && t.phone !== client.owner_phone).length === 0 && (
+              <tr><td colSpan={5} className="px-4 py-3 text-sm text-gray-400 text-center italic">No additional team members.</td></tr>
             )}
           </tbody>
         </table>
@@ -521,7 +533,7 @@ export default function ClientDetail() {
         <div className="flex items-end gap-3 pt-3 border-t border-gray-200">
           <div className="flex-1">
             <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-            <input type="text" value={newTechName} onChange={(e) => setNewTechName(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#F59E0B]" placeholder="Tech name" />
+            <input type="text" value={newTechName} onChange={(e) => setNewTechName(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#F59E0B]" placeholder="Team member name" />
           </div>
           <div className="flex-1">
             <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
@@ -538,7 +550,7 @@ export default function ClientDetail() {
               className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1"
             >
               <span className={`inline-block transition-transform ${showInactive ? 'rotate-90' : ''}`}>&#9654;</span>
-              Inactive Technicians ({techs.filter((t) => !t.is_active).length})
+              Inactive Team Members ({techs.filter((t) => !t.is_active).length})
             </button>
             {showInactive && (
               <table className="min-w-full divide-y divide-gray-200 mt-3">

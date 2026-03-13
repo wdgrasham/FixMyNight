@@ -86,23 +86,7 @@ async def twilio_sms(request: Request, db: AsyncSession = Depends(get_db)):
             await _handle_owner_status(client, db)
             return Response(content="", media_type="application/xml")
 
-        # ON/OFF: only if owner has no active technicians
-        has_techs = await db.execute(
-            select(Technician).where(
-                Technician.client_id == client.id,
-                Technician.is_active == True,
-            )
-        )
-        if has_techs.scalars().first():
-            await send_sms(
-                from_number,
-                "You have technicians registered. Your on-call tech "
-                "can text ON to this number.",
-                from_number=client.twilio_number,
-            )
-            return Response(content="", media_type="application/xml")
-
-        # Single operator — auto-create tech record for owner
+        # ON/OFF: auto-create tech record for owner so they can go on-call
         tech = Technician(
             client_id=client.id,
             name=client.owner_name,

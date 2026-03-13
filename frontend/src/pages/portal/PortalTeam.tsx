@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { api, ApiError } from '../../api';
-import type { Technician } from '../../types';
+import type { Technician, Client } from '../../types';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import ErrorBanner from '../../components/ErrorBanner';
 import ConfirmModal from '../../components/ConfirmModal';
@@ -10,6 +10,7 @@ import PhoneInput, { formatPhoneDisplay } from '../../components/PhoneInput';
 export default function PortalTeam() {
   const { clientId } = useParams<{ clientId: string }>();
   const [techs, setTechs] = useState<Technician[]>([]);
+  const [owner, setOwner] = useState<{ name: string; phone: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -30,10 +31,14 @@ export default function PortalTeam() {
   useEffect(() => {
     (async () => {
       try {
-        const data = await api<Technician[]>(`/api/v1/portal/${clientId}/technicians`);
-        setTechs(data);
+        const [techData, clientData] = await Promise.all([
+          api<Technician[]>(`/api/v1/portal/${clientId}/technicians`),
+          api<Client>(`/api/v1/portal/${clientId}/settings`),
+        ]);
+        setTechs(techData);
+        setOwner({ name: clientData.owner_name, phone: clientData.owner_phone });
       } catch {
-        setError('Failed to load technicians.');
+        setError('Failed to load team.');
       } finally {
         setLoading(false);
       }
@@ -115,7 +120,22 @@ export default function PortalTeam() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {techs.map((tech) => (
+            {/* Owner row — permanent, cannot be deleted */}
+            {owner && (
+              <tr className="bg-amber-50/30">
+                <td className="px-4 py-3 text-sm text-gray-900 font-medium">{owner.name} <span className="text-xs text-amber-600 font-normal">(Owner)</span></td>
+                <td className="px-4 py-3 text-sm text-gray-700">{formatPhoneDisplay(owner.phone)}</td>
+                <td className="px-4 py-3 text-sm"><span className="text-green-600">—</span></td>
+                <td className="px-4 py-3 text-sm"><span className="text-green-600">—</span></td>
+                <td className="px-4 py-3 text-sm">
+                  {techs.find((t) => t.phone === owner.phone && t.on_call)
+                    ? <span className="text-green-600 font-medium">On Call</span>
+                    : <span className="text-gray-400">Available</span>}
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-400">—</td>
+              </tr>
+            )}
+            {techs.filter((t) => !owner || t.phone !== owner.phone).map((tech) => (
               <tr key={tech.id} className={!tech.is_active ? 'opacity-50' : ''}>
                 {editingId === tech.id ? (
                   <>
@@ -152,8 +172,8 @@ export default function PortalTeam() {
                 )}
               </tr>
             ))}
-            {techs.length === 0 && (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">No technicians yet.</td></tr>
+            {techs.filter((t) => !owner || t.phone !== owner.phone).length === 0 && (
+              <tr><td colSpan={6} className="px-4 py-3 text-center text-sm text-gray-400 italic">No additional team members.</td></tr>
             )}
           </tbody>
         </table>
@@ -161,7 +181,7 @@ export default function PortalTeam() {
 
       {/* Add Tech Form */}
       <div className="mt-6 bg-white rounded-lg border border-gray-200 p-6">
-        <h2 className="text-sm font-medium text-gray-900 mb-3">Add Technician</h2>
+        <h2 className="text-sm font-medium text-gray-900 mb-3">Add Team Member</h2>
         {addError && <ErrorBanner message={addError} onDismiss={() => setAddError('')} />}
         {addSuccess && (
           <div className="mb-3 p-3 bg-green-50 border border-green-200 rounded-md text-sm text-green-700">{addSuccess}</div>
@@ -169,7 +189,7 @@ export default function PortalTeam() {
         <div className="flex items-end gap-3">
           <div className="flex-1">
             <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-            <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Tech name" className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+            <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Name" className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
           </div>
           <div className="flex-1">
             <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
@@ -181,7 +201,7 @@ export default function PortalTeam() {
 
       {deactivateTarget && (
         <ConfirmModal
-          title="Deactivate Technician"
+          title="Deactivate Team Member"
           message={`Deactivating ${deactivateTarget.name} will remove them from on-call rotation. They will not receive transfers.`}
           confirmLabel="Deactivate"
           onConfirm={handleDeactivate}

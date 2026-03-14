@@ -78,6 +78,24 @@ Work through in order. Do not skip ahead.
 - Vapi rebuild triggers: any change to the fields in `VAPI_REBUILD_TRIGGERS` set
 - The `routing_rules` table is for cron jobs only — it does NOT gate call routing
 
+## Current Status (2026-03-14)
+
+All 5 build phases are **COMPLETE**. Phase 5 QA passed all hard-block test
+scenarios via live phone calls and SMS against production (Stellar HVAC).
+
+**Deployed and working:**
+- Dynamic per-call prompts via assistant-request webhook
+- Emergency dispatch with transfer to on-call tech
+- Sleep window (no transfers, urgent callback message)
+- SMS on-call management (ON/OFF/STATUS)
+- Morning summary email (claim-before-send, no duplicates)
+- Client portal settings (business hours, sleep window, emergency fee)
+- Anti-abuse with caller slang tolerance
+- Prompt injection protection
+
+**Deferred to V1.1:** Interruption/endpointing, silence prompt sequencing.
+See `OPEN-ITEMS.md` for full list.
+
 ## Custom Commands Available
 
 Use `/project:fixmynight-audit` through `/project:fixmynight-phase` for spec

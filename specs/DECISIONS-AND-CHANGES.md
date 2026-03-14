@@ -1035,4 +1035,106 @@ Major session covering four features: overage billing enforcement, plan limit au
 
 ---
 
-*This document is the authoritative record of all V1.5 and V1.6 decisions. Any implementation that contradicts this document contains an error. Last updated: 2026-03-09.*
+## Phase 5 QA Session (2026-03-13 / 2026-03-14)
+
+Full Phase 5 call and SMS testing completed. All hard-block QA scenarios
+passed. Multiple bugs discovered and fixed during live testing.
+
+### Decision 1: Safety Disclaimer Fully Removed
+
+**Context:** Architecture Rule 7 says "No safety advice of any kind." During
+testing, residual safety language was found in the emergency pity response.
+
+**Decision:** Remove ALL safety advice. Emergency pity is empathy only:
+`"I am sorry that you are having an issue."` No mention of 911, emergency
+services, leaving buildings, turning off valves, or any safety instructions.
+
+**Rationale:** FixMyNight is an answering service, not a safety authority.
+Giving safety advice creates liability. Callers in emergencies need dispatch,
+not a script telling them what to do.
+
+### Decision 2: Idle/Interruption Settings Reverted and Deferred
+
+**Context:** Sarah talks through her entire greeting without stopping when
+the caller interrupts. Vapi's `stopSpeakingPlan` config was added with
+`numWords: 2` and `voiceSeconds: 0.2` to enable interruption detection.
+
+**Decision:** Reverted the interruption changes. Deferred to V1.1.
+
+**Rationale:** Interruption settings affect all parts of the call, not just
+the greeting. Aggressive interruption detection could cause Sarah to stop
+mid-sentence on background noise or caller breathing. Needs isolated testing
+before deploying to production.
+
+### Decision 3: Call 5 (Emergency Blurt T1.18/T1.19) Skipped
+
+**Context:** T1.18 (caller blurts emergency immediately) and T1.19 (no safety
+disclaimer) were scheduled as Call 5.
+
+**Decision:** Skipped — covered by Calls 3 and 4.
+
+**Rationale:** Calls 3 and 4 already verified that Sarah handles immediate
+emergency descriptions without re-asking, and that no safety disclaimer is
+spoken. A dedicated test would not provide additional signal.
+
+### Decision 4: Owner SMS Commands — STATUS Always, ON/OFF for Single Operators
+
+**Context:** Business owners need to check on-call status and, in some cases,
+go on-call themselves (single-operator businesses with no technicians).
+
+**Decision:** Owners can always text STATUS. Owners can text ON/OFF, which
+auto-creates a tech record with `phone_verified=True`. Confirmation SMS is
+skipped when the tech IS the owner (avoids redundant self-notification).
+
+**Rationale:** Single-operator businesses are common in trades. The owner
+should be able to manage on-call status without registering themselves as a
+separate technician through the admin portal.
+
+### Decision 5: Anti-Abuse Adjusted for Caller Slang Tolerance
+
+**Context:** During sleep window testing, the caller said "I am cooked" and
+Sarah triggered the off-topic redirect.
+
+**Decision:** Added explicit exemption for frustration/slang/emotional language
+in the ANTI-ABUSE prompt section. Only genuinely off-topic requests (jokes,
+trivia, math, games) trigger the redirect. The CRITICAL SECURITY RULES
+section (prompt injection protection) is unaffected.
+
+**Rationale:** Real callers in emergencies use emotional language. "I'm dying
+here" is frustration, not a request for medical advice. False positives on
+slang would cause callers to hang up in frustration.
+
+### Decision 6: Claim-Before-Send Pattern for Morning Summary
+
+**Context:** Morning summary cron sent ~120 duplicate emails because the
+sent-date flag was committed after email delivery.
+
+**Decision:** Set `last_summary_sent_date` and commit BEFORE any email/SMS
+work. If delivery fails, the flag is already set — no duplicates. Failed
+delivery is logged to audit_logs for manual follow-up.
+
+**Trade-off:** If email delivery fails, the summary is not retried today.
+This is acceptable because: (a) 120 duplicate emails would cause client
+cancellation, (b) failed delivery is captured in audit_logs, (c) the calls
+will appear in the next day's summary if `morning_summary_sent_at` wasn't set.
+
+### Decision 7: Architecture Rule #11 — Never Set assistantId on Phone Numbers
+
+**Context:** `assistantId` on Vapi phone numbers prevented the
+`assistant-request` webhook from firing. All dynamic prompt behavior
+(time windows, on-call tech, client config, caller phone) was bypassed.
+
+**Decision:** Added as permanent Architecture Rule #11. The fallback assistant
+exists only as a Vapi-level safety net for webhook failures.
+
+### Outstanding Items After March 14
+
+- Interruption/endpointing settings (V1.1)
+- Silence prompt sequencing (V1.1)
+- Transfer failure clean verification test
+- Stripe test mode → live mode
+- Fallback assistant verification test
+
+---
+
+*This document is the authoritative record of all V1.5 and V1.6 decisions. Any implementation that contradicts this document contains an error. Last updated: 2026-03-14.*

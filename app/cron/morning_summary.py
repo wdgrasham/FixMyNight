@@ -72,7 +72,18 @@ async def _maybe_send_morning_summary(client, db: AsyncSession):
     now = datetime.now(tz)
     today = now.date()
 
-    # Fetch unsent calls, ordered urgent first
+    # ── STEP 1: Claim this client BEFORE doing any work ──────────────
+    # Set the sent-date flag and commit immediately.  This prevents
+    # duplicate sends if the email/SMS step is slow and the next cron
+    # tick fires before we finish.
+    await db.execute(
+        update(Client)
+        .where(Client.id == client.id)
+        .values(last_summary_sent_date=today)
+    )
+    await db.commit()
+
+    # ── STEP 2: Fetch unsent calls ───────────────────────────────────
     calls_result = await db.execute(
         select(Call)
         .where(
@@ -94,6 +105,7 @@ async def _maybe_send_morning_summary(client, db: AsyncSession):
 
     summary = _build_summary(client, calls, tz, tech_names)
 
+    # ── STEP 3: Deliver the summary ──────────────────────────────────
     try:
         delivery_methods = []
 
@@ -123,6 +135,7 @@ async def _maybe_send_morning_summary(client, db: AsyncSession):
 
         delivery = "+".join(delivery_methods) if delivery_methods else "none"
 
+        # Mark individual calls as included in this summary
         call_ids = [c.id for c in calls]
         if call_ids:
             await db.execute(
@@ -130,12 +143,6 @@ async def _maybe_send_morning_summary(client, db: AsyncSession):
                 .where(Call.id.in_(call_ids))
                 .values(morning_summary_sent_at=datetime.utcnow())
             )
-        # Mark summary as sent today (prevents re-sends including empty summaries)
-        await db.execute(
-            update(Client)
-            .where(Client.id == client.id)
-            .values(last_summary_sent_date=today)
-        )
         await db.commit()
 
         await write_audit_log(
@@ -151,6 +158,9 @@ async def _maybe_send_morning_summary(client, db: AsyncSession):
             },
         )
     except Exception as e:
+        # Flag is already set — no duplicate sends on retry.
+        # The summary will not be re-attempted today.  If delivery
+        # failed, the audit log captures it for manual follow-up.
         await write_audit_log(
             db,
             "cron.morning_summary_failed",

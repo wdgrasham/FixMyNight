@@ -25,11 +25,10 @@ def build_first_message(client, time_window: str = "evening") -> str:
 
     if time_window == "business_hours":
         return (
-            f"This call may be recorded for quality purposes. "
-            f"Thanks for calling {client.business_name}. "
-            f"We're currently open — please try calling back in a few minutes "
-            f"and someone will be happy to help you. "
-            f"If you'd like, I can take a quick message."
+            f"Thanks for calling {client.business_name}, this is {agent_name}. "
+            f"This call may be recorded. "
+            f"We're not able to take your call right now but I can take a message "
+            f"and make sure someone calls you back. What's this regarding?"
         )
 
     return (
@@ -61,13 +60,13 @@ YOUR ROLE: Take a quick message if the caller wants to leave one. Keep the call 
 ---
 
 OPENING:
-Your first message (already spoken by the system) tells the caller the business is open and offers to take a message. Listen to their response.
+Your first message (already spoken by the system) asks the caller what they're calling about. Listen to their response and follow the appropriate flow below.
+
+IMPORTANT: If the caller has already stated their message or reason for calling, do NOT ask them to repeat it. Acknowledge what they said and move directly to collecting their name and callback number.
 
 ---
 
-IF CALLER WANTS TO LEAVE A MESSAGE:
-"Sure, go ahead."
-Let them speak. When done:
+IF CALLER STATES THEIR MESSAGE OR REASON FOR CALLING:
 "Got it. Can I get your name?"
 Collect their name, then use the CALLBACK NUMBER COLLECTION flow below to get their number.
 Then say: "Got it, I'll make sure {client.business_name} gets your message. Someone will call you back shortly. Have a great day."

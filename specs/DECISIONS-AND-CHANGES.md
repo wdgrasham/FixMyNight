@@ -1127,6 +1127,22 @@ will appear in the next day's summary if `morning_summary_sent_at` wasn't set.
 **Decision:** Added as permanent Architecture Rule #11. The fallback assistant
 exists only as a Vapi-level safety net for webhook failures.
 
+### Decision 8: Daytime Emergency Detection Is Upgraded Tier Only
+
+**Context:** The basic daytime tier (`daytime_enabled = FALSE`) was built with an
+emergency detection section in the prompt. This conflates the basic message-taking
+tier with upgraded receptionist features.
+
+**Decision:** Daytime emergency detection is part of the upgraded tier
+(`daytime_enabled = TRUE`), not the basic message-taking tier. Basic daytime only
+takes messages — no emergency detection, no qualification, no transfer. All calls
+during business hours with the basic tier receive the same treatment: take a
+message, collect name and callback number, end the call.
+
+The upgraded tier will add: emergency detection, qualification questions, FAQ
+answering, scheduling preferences, urgent SMS for emergencies, and a separate
+daytime emergency fee (distinct from the evening fee).
+
 ### Outstanding Items After March 14
 
 - Interruption/endpointing settings (V1.1)
@@ -1134,6 +1150,8 @@ exists only as a Vapi-level safety net for webhook failures.
 - Transfer failure clean verification test
 - Stripe test mode → live mode
 - Fallback assistant verification test
+- Daytime upgraded tier (daytime_enabled = TRUE)
+- Daytime emergency fee and transfer evaluation
 
 ---
 

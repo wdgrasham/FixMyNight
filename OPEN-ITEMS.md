@@ -29,6 +29,9 @@
 - [ ] **Sleep window default values** — When enabling sleep window in portal, defaults to 22:00-08:00. Consider making these configurable or smarter based on client timezone.
 - [ ] **Transfer failure verification** — Config changes made (removed unreliable flags, added full fallback message), but needs a clean end-to-end test where tech doesn't answer.
 - [ ] **Phone readback pacing verification** — Comma-separated digit format deployed but not explicitly verified in a clean test.
+- [ ] **Daytime upgraded tier (daytime_enabled = TRUE)** — Add emergency detection, qualification questions, FAQ answering, scheduling preferences, urgent SMS for emergencies. Basic tier (FALSE) is message-only.
+- [ ] **Daytime emergency fee** — Configurable per client, separate from evening fee. Evaluate after client feedback.
+- [ ] **Daytime emergency transfer** — Evaluate whether to attempt transfer or just send urgent SMS during business hours.
 
 ## Phase Status
 

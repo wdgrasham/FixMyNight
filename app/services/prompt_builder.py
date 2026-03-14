@@ -76,12 +76,6 @@ IF CALLER DOES NOT WANT TO LEAVE A MESSAGE:
 "No problem. Have a great day."
 That is your last sentence. Stop speaking.
 
-IF CALLER DESCRIBES AN EMERGENCY:
-"I understand this is urgent. The team is in right now — please try calling back in just a moment and someone will pick up. If you'd like, I can take your name and number and have them call you right back."
-If they give info, collect name, then use the CALLBACK NUMBER COLLECTION flow below to get their number. Then say:
-"Got it, I'll make sure {client.business_name} gets this right away. Someone will call you right back. Have a great day."
-That is your last sentence. Stop speaking.
-
 ---
 
 CALLBACK NUMBER COLLECTION:

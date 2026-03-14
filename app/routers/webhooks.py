@@ -76,6 +76,7 @@ async def vapi_intake(request: Request, db: AsyncSession = Depends(get_db)):
         phone_number_id = (
             body.get("message", {}).get("call", {}).get("phoneNumberId")
         )
+        caller_phone = body.get("message", {}).get("call", {}).get("customer", {}).get("number")
         client = await get_client_by_vapi_phone(phone_number_id, db)
         if not client:
             logger.warning("No client found for phoneNumberId=%s", phone_number_id)
@@ -95,6 +96,10 @@ async def vapi_intake(request: Request, db: AsyncSession = Depends(get_db)):
         on_call_tech = tech_result.scalar_one_or_none()
         transfer_dest = on_call_tech.phone if on_call_tech else None
         prompt = build_sarah_prompt(client, time_window, has_on_call_tech=bool(on_call_tech))
+
+        # Inject caller's phone number so Sarah can read it back for confirmation
+        if caller_phone:
+            prompt += f"\n\n---\n\nCALLER PHONE NUMBER:\nThe caller's phone number is {caller_phone}. Use this when confirming their callback number."
 
         response = {
             "assistantId": client.vapi_assistant_id,
@@ -116,7 +121,7 @@ async def vapi_intake(request: Request, db: AsyncSession = Depends(get_db)):
                 "silenceTimeoutSeconds": 60,
             },
         }
-        print(f"[VAPI] assistant-request: client={client.business_name}, tw={time_window}, transfer_dest={transfer_dest}", file=sys.stderr, flush=True)
+        print(f"[VAPI] assistant-request: client={client.business_name}, tw={time_window}, transfer_dest={transfer_dest}, caller={caller_phone}", file=sys.stderr, flush=True)
         return response
 
     # --- transfer-destination-request: AI triggered transferCall, Vapi asks where to send it ---

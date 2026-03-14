@@ -220,12 +220,11 @@ export default function PortalSettings() {
                 type="checkbox"
                 checked={!!settings.sleep_window_start}
                 onChange={(e) => {
+                  if (!settings) return;
                   if (e.target.checked) {
-                    update('sleep_window_start', '22:00');
-                    update('sleep_window_end', '08:00');
+                    setSettings({ ...settings, sleep_window_start: '22:00', sleep_window_end: '08:00' } as Client);
                   } else {
-                    update('sleep_window_start', null);
-                    update('sleep_window_end', null);
+                    setSettings({ ...settings, sleep_window_start: null, sleep_window_end: null } as Client);
                   }
                 }}
                 className="h-4 w-4 rounded border-gray-300 text-[#F59E0B] focus:ring-[#F59E0B]"

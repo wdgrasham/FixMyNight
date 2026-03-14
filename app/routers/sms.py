@@ -87,12 +87,15 @@ async def twilio_sms(request: Request, db: AsyncSession = Depends(get_db)):
             return Response(content="", media_type="application/xml")
 
         # ON/OFF: auto-create tech record for owner so they can go on-call
+        now = datetime.utcnow()
         tech = Technician(
             client_id=client.id,
             name=client.owner_name,
             phone=client.owner_phone,
             phone_verified=True,
-            verified_at=datetime.utcnow(),
+            verified_at=now,
+            created_at=now,
+            updated_at=now,
             is_active=True,
         )
         db.add(tech)

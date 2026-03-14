@@ -81,7 +81,6 @@ async def vapi_intake(request: Request, db: AsyncSession = Depends(get_db)):
             logger.warning("No client found for phoneNumberId=%s", phone_number_id)
             return {"error": "Client not found"}
         time_window = get_time_window(client)
-        prompt = build_sarah_prompt(client, time_window)
         first_message = build_first_message(client)
 
         # Look up on-call tech for dynamic transfer destination
@@ -95,6 +94,7 @@ async def vapi_intake(request: Request, db: AsyncSession = Depends(get_db)):
         )
         on_call_tech = tech_result.scalar_one_or_none()
         transfer_dest = on_call_tech.phone if on_call_tech else None
+        prompt = build_sarah_prompt(client, time_window, has_on_call_tech=bool(on_call_tech))
 
         response = {
             "assistantId": client.vapi_assistant_id,
@@ -113,7 +113,7 @@ async def vapi_intake(request: Request, db: AsyncSession = Depends(get_db)):
                 "endCallFunctionEnabled": True,
                 "endCallMessage": None,
                 "endCallPhrases": ["Have a good night", "Goodnight"],
-                "silenceTimeoutSeconds": 20,
+                "silenceTimeoutSeconds": 60,
             },
         }
         print(f"[VAPI] assistant-request: client={client.business_name}, tw={time_window}, transfer_dest={transfer_dest}", file=sys.stderr, flush=True)

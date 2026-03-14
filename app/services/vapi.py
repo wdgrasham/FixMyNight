@@ -201,8 +201,13 @@ def _get_vapi_tools(transfer_destination: str = None):
             },
         }]
 
-    return [
-        {
+    tools = []
+
+    # Only include transferCall when there's an on-call tech to transfer to.
+    # When no tech is on-call, the LLM has no transfer tool and will follow
+    # the prompt's fallback script (flag as urgent, promise morning callback).
+    if destinations:
+        tools.append({
             "type": "transferCall",
             "destinations": destinations,
             "messages": [
@@ -238,8 +243,9 @@ def _get_vapi_tools(transfer_destination: str = None):
                     "required": ["caller_phone", "issue_summary"],
                 },
             },
-        },
-    ]
+        })
+
+    return tools
 
 
 # Backward-compatible alias for imports

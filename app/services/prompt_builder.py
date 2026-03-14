@@ -32,7 +32,7 @@ def build_first_message(client) -> str:
     )
 
 
-def build_sarah_prompt(client, time_window: str = "evening") -> str:
+def build_sarah_prompt(client, time_window: str = "evening", has_on_call_tech: bool = True) -> str:
     """
     Build the AI agent's system prompt for a specific time window.
     Called by the assistant-request webhook handler with the current time_window.
@@ -101,8 +101,21 @@ def build_sarah_prompt(client, time_window: str = "evening") -> str:
             f"If the caller has already described their issue, do NOT ask them to repeat it — summarize what they said for confirmation instead. Only ask for a description if they haven't stated the problem yet.\n"
             f"Do NOT call transferCall."
         )
+    elif not has_on_call_tech:
+        # Emergency enabled but no tech on-call — fallback to urgent callback
+        emergency_section = (
+            f"EMERGENCY FLOW:\n"
+            f"If the caller says yes, describes an emergency, says they need someone tonight, or expresses urgency:\n"
+            f'Say: "{emergency_pity}"\n'
+            f'Then say: "Our on-call {tech_title} isn\'t available right now, '
+            f"but I'm flagging this as an urgent emergency and our team will reach out "
+            f'to you as soon as possible."\n'
+            f"Collect their name, then use the CALLBACK NUMBER COLLECTION flow below to get their number.\n"
+            f"If the caller has already described their issue, do NOT ask them to repeat it — summarize what they said for confirmation instead. Only ask for a description if they haven't stated the problem yet.\n"
+            f"Do NOT call transferCall."
+        )
     elif fee_display:
-        # Emergency enabled WITH a fee
+        # Emergency enabled WITH a fee, tech on-call
         emergency_section = (
             f"EMERGENCY FLOW:\n"
             f"If the caller says yes, describes an emergency, says they need someone tonight, or expresses urgency:\n"
@@ -120,7 +133,7 @@ def build_sarah_prompt(client, time_window: str = "evening") -> str:
             f"Fall through to the non-emergency/routine flow below."
         )
     else:
-        # Emergency enabled WITHOUT a fee
+        # Emergency enabled WITHOUT a fee, tech on-call
         emergency_section = (
             f"EMERGENCY FLOW:\n"
             f"If the caller says yes, describes an emergency, says they need someone tonight, or expresses urgency:\n"
@@ -277,7 +290,7 @@ After collecting the caller's name, get their callback number using this flow:
 
 If the caller's phone number is visible (caller ID is available):
 "And the best number to reach you — is it the number you're calling from?"
-- If YES → Read the caller's actual phone number back to them digit by digit, grouped as 3 digits, 3 digits, 4 digits. Say: "Great, I have your number as [their actual digits]. Is that correct?" Then move on.
+- If YES → Confirm by reading the number back. Say each digit individually, grouped as three digits, three digits, four digits, like: "Great, I have 5-1-2, 5-5-5, 9-8-7-6. Is that correct?" Use the actual digits from caller ID. Then move on.
 - If NO → "No problem. What number should we call you back at?" Collect the number, then follow PHONE NUMBER VERIFICATION below.
 
 If the caller's phone number is NOT visible (blocked, unknown, or unavailable):
@@ -287,14 +300,12 @@ Collect the number, then follow PHONE NUMBER VERIFICATION below.
 ---
 
 PHONE NUMBER VERIFICATION:
-After the caller gives you a phone number, always read their actual digits back to confirm. Read digit by digit, grouped as 3 digits, 3 digits, 4 digits. Say: "I have your number as [their actual digits] — is that correct?"
+When confirming a phone number, say each digit individually, grouped as three digits, three digits, four digits. For example, for the number 5125559876, say "I have 5-1-2, 5-5-5, 9-8-7-6 — is that correct?" Always use the digits the caller actually gave you.
 
 If the number doesn't sound like a complete 10-digit number:
 - First attempt: "I want to make sure I have your number right — could you repeat the full 10-digit number for me?"
 - Second attempt: "I'm having trouble catching the full number. Could you say it one more time, nice and slow?"
 - After three attempts: Accept whatever was given and move on.
-
-IMPORTANT: Always read back exactly what the caller said — never substitute, guess, or use any other number. Never ask for "just the last four digits" — always ask for the complete number.
 
 ---
 

@@ -164,8 +164,14 @@ async def _handle_on_call_on(tech, client, db):
         .values(on_call=True, on_call_start=datetime.utcnow())
     )
     await db.commit()
-    # Skip owner notification if the tech IS the owner (redundant)
     if tech.phone != client.owner_phone:
+        # Confirm to tech
+        await send_sms(
+            tech.phone,
+            f"You are now on-call for {client.business_name}.",
+            from_number=client.twilio_number,
+        )
+        # Notify owner
         await send_sms(
             client.owner_phone,
             f"{tech.name} is now on-call for {client.business_name}.",
@@ -197,8 +203,14 @@ async def _handle_on_call_off(tech, client, db):
         .values(on_call=False, on_call_end=datetime.utcnow())
     )
     await db.commit()
-    # Skip owner notification if the tech IS the owner (redundant)
     if tech.phone != client.owner_phone:
+        # Confirm to tech
+        await send_sms(
+            tech.phone,
+            f"You are now off-call for {client.business_name}.",
+            from_number=client.twilio_number,
+        )
+        # Notify owner
         await send_sms(
             client.owner_phone,
             f"{tech.name} is no longer on-call for {client.business_name}.",

@@ -153,7 +153,6 @@ def _get_vapi_tools(transfer_destination: str = None):
                 },
                 "fallbackPlan": {
                     "message": transfer_failure_msg,
-                    "endCallEnabled": True,
                 },
                 "transferAssistant": {
                     "firstMessage": (
@@ -218,7 +217,6 @@ def _get_vapi_tools(transfer_destination: str = None):
                 {
                     "type": "request-failed",
                     "content": transfer_failure_msg,
-                    "endCallAfterSpokenEnabled": True,
                 },
             ],
             "function": {

@@ -464,14 +464,20 @@ async def vapi_intake(request: Request, db: AsyncSession = Depends(get_db)):
             )
 
         if time_window == "business_hours" and not is_transfer and not failed_emergency_transfer:
-            label = "URGENT — " if is_emergency else ""
-            await send_sms(
-                client.owner_phone,
-                f"{label}Missed call for {client.business_name}: "
-                f"{extracted.get('caller_name', 'Unknown')} {caller_phone_final} — "
-                f"{extracted.get('issue_summary', 'No details')}",
-                from_number=client.twilio_number,
-            )
+            if call_type not in ("wrong_number", "hangup"):
+                label = "URGENT — " if is_emergency else ""
+                notify_phones = client.missed_call_notify_phones
+                if isinstance(notify_phones, str):
+                    notify_phones = json.loads(notify_phones)
+                if not notify_phones:
+                    notify_phones = [client.owner_phone]
+                msg = (
+                    f"{label}Missed call for {client.business_name}: "
+                    f"{extracted.get('caller_name', 'Unknown')} {caller_phone_final} — "
+                    f"{extracted.get('issue_summary', 'No details')}"
+                )
+                for number in notify_phones:
+                    await send_sms(number, msg, from_number=client.twilio_number)
 
         if time_window == "sleep" and is_emergency:
             await send_sms(

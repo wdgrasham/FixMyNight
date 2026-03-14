@@ -42,6 +42,7 @@ PORTAL_EDITABLE_FIELDS = {
     "contact_email",
     "admin_sms_numbers",
     "daytime_enabled",
+    "missed_call_notify_phones",
 }
 
 VAPI_REBUILD_TRIGGERS = {
@@ -273,6 +274,7 @@ async def get_settings(
         "industry": client.industry,
         "business_hours_schedule": client.business_hours_schedule,
         "daytime_enabled": client.daytime_enabled,
+        "missed_call_notify_phones": client.missed_call_notify_phones,
     }
 
 

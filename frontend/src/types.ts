@@ -69,6 +69,7 @@ export interface Client {
   business_hours_schedule: BusinessHoursSchedule | null;
   business_hours_emergency_dispatch: boolean;
   daytime_enabled: boolean;
+  missed_call_notify_phones: string[];
   sleep_window_start: string | null;
   sleep_window_end: string | null;
   summary_send_time: string;
@@ -203,4 +204,5 @@ export interface PortalSettingsPayload {
   contact_email?: string;
   admin_sms_numbers?: string[];
   daytime_enabled?: boolean;
+  missed_call_notify_phones?: string[];
 }

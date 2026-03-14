@@ -121,6 +121,14 @@ async def lifespan(app: FastAPI):
         await conn.execute(text(
             "ALTER TABLE clients ADD COLUMN IF NOT EXISTS business_faq JSONB NOT NULL DEFAULT '{}'"
         ))
+        await conn.execute(text(
+            "ALTER TABLE clients ADD COLUMN IF NOT EXISTS missed_call_notify_phones JSONB NOT NULL DEFAULT '[]'"
+        ))
+        # Backfill: default to [owner_phone] for existing clients with empty list
+        await conn.execute(text(
+            "UPDATE clients SET missed_call_notify_phones = jsonb_build_array(owner_phone) "
+            "WHERE missed_call_notify_phones = '[]'::jsonb AND owner_phone IS NOT NULL"
+        ))
 
     # Startup: start cron scheduler
     scheduler.add_job(morning_summary_job, "interval", minutes=1, id="morning_summary")

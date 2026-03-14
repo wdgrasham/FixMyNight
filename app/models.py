@@ -51,6 +51,7 @@ class Client(Base):
     last_overage_reported_date = Column(Date)
     daytime_enabled = Column(Boolean, nullable=False, default=False)
     business_faq = Column(JSONB, nullable=False, default=dict)
+    missed_call_notify_phones = Column(JSONB, nullable=False, default=list)
 
 
 class Technician(Base):

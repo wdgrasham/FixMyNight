@@ -178,10 +178,18 @@ class PortalSettingsUpdate(BaseModel):
     contact_email: Optional[EmailStr] = None
     admin_sms_numbers: Optional[List[str]] = None
     daytime_enabled: Optional[bool] = None
+    missed_call_notify_phones: Optional[List[str]] = None
 
     @field_validator('admin_sms_numbers')
     @classmethod
     def validate_sms_numbers(cls, v: Optional[List[str]]) -> Optional[List[str]]:
+        if v is None:
+            return v
+        return [validate_e164_phone(n) for n in v if n.strip()]
+
+    @field_validator('missed_call_notify_phones')
+    @classmethod
+    def validate_missed_call_phones(cls, v: Optional[List[str]]) -> Optional[List[str]]:
         if v is None:
             return v
         return [validate_e164_phone(n) for n in v if n.strip()]
@@ -204,6 +212,7 @@ class ClientResponse(BaseModel):
     business_hours_schedule: Optional[dict] = None
     business_hours_emergency_dispatch: bool
     daytime_enabled: bool = False
+    missed_call_notify_phones: list = []
     sleep_window_start: Optional[time] = None
     sleep_window_end: Optional[time] = None
     summary_send_time: Optional[time] = None

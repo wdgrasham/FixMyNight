@@ -68,6 +68,7 @@ export default function PortalSettings() {
       contact_email: settings.contact_email,
       admin_sms_numbers: settings.admin_sms_numbers,
       daytime_enabled: settings.daytime_enabled,
+      missed_call_notify_phones: settings.missed_call_notify_phones,
     };
 
     try {
@@ -122,6 +123,23 @@ export default function PortalSettings() {
   const removeAdminSms = (idx: number) => {
     if (!settings || settings.admin_sms_numbers.length <= 1) return;
     update('admin_sms_numbers', settings.admin_sms_numbers.filter((_, i) => i !== idx));
+  };
+
+  const updateMissedCallPhone = (idx: number, value: string) => {
+    if (!settings) return;
+    const nums = [...settings.missed_call_notify_phones];
+    nums[idx] = value;
+    update('missed_call_notify_phones', nums);
+  };
+
+  const addMissedCallPhone = () => {
+    if (!settings) return;
+    update('missed_call_notify_phones', [...settings.missed_call_notify_phones, '']);
+  };
+
+  const removeMissedCallPhone = (idx: number) => {
+    if (!settings) return;
+    update('missed_call_notify_phones', settings.missed_call_notify_phones.filter((_, i) => i !== idx));
   };
 
   if (loading) return <LoadingSpinner />;
@@ -296,6 +314,21 @@ export default function PortalSettings() {
                 </div>
               </div>
             )}
+          </div>
+        </section>
+
+        {/* Missed Call Notifications */}
+        <section className="bg-white rounded-lg border border-gray-200 p-6">
+          <h2 className="text-lg font-medium text-gray-900 mb-4">Missed Call Notifications</h2>
+          <div className="space-y-3">
+            <p className="text-xs text-gray-500">Phone numbers that receive an SMS when a message is taken during business hours. Add your office manager, receptionist, or anyone who should be notified.</p>
+            {settings.missed_call_notify_phones.map((num, idx) => (
+              <div key={idx} className="flex items-center gap-2">
+                <PhoneInput value={num} onChange={(v) => updateMissedCallPhone(idx, v)} className="flex-1" />
+                <button type="button" onClick={() => removeMissedCallPhone(idx)} className="text-red-500 text-sm hover:text-red-700">&times;</button>
+              </div>
+            ))}
+            <button type="button" onClick={addMissedCallPhone} className="text-sm text-[#F59E0B] hover:text-[#D97706]">+ Add number</button>
           </div>
         </section>
 

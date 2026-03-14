@@ -330,16 +330,13 @@ async def rebuild_vapi_assistant(client_id: str, db):
 async def import_twilio_number_to_vapi(
     twilio_number: str, assistant_id: str
 ) -> str:
-    """Import a Twilio number into Vapi and link to assistant. Returns vapi phone number ID.
+    """Import a Twilio number into Vapi and link to webhook. Returns vapi phone number ID.
 
-    The assistantId on the phone number serves as the fallback when the
-    assistant-request webhook fails. We prefer using the generic fallback
-    assistant so callers always hear Sarah, even during a backend outage.
-    If no fallback exists yet, we fall back to the client-specific assistant.
+    We do NOT set assistantId on the phone number — doing so prevents Vapi
+    from sending the assistant-request webhook, which we need for dynamic
+    prompt building (time windows, on-call tech, business name, etc.).
+    The serverUrl handles all calls via assistant-request.
     """
-    # Try to use the generic fallback assistant as the phone number's assistantId
-    fallback_id = os.environ.get("VAPI_FALLBACK_ASSISTANT_ID") or assistant_id
-
     async with httpx.AsyncClient() as http:
         r = await http.post(
             f"{VAPI_BASE_URL}/phone-number",
@@ -349,7 +346,6 @@ async def import_twilio_number_to_vapi(
                 "number": twilio_number,
                 "twilioAccountSid": os.environ["TWILIO_ACCOUNT_SID"],
                 "twilioAuthToken": os.environ["TWILIO_AUTH_TOKEN"],
-                "assistantId": fallback_id,
                 "serverUrl": os.environ.get("VAPI_SERVER_URL", ""),
             },
         )

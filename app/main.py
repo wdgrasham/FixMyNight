@@ -19,33 +19,19 @@ scheduler = AsyncIOScheduler()
 
 
 async def _setup_fallback_assistant():
-    """Ensure the generic Vapi fallback assistant exists and all active phone
-    numbers use it as their assistantId. When our webhook works, it overrides
-    with dynamic config. When the webhook fails (outage), callers hear the
-    generic fallback Sarah instead of silence."""
-    from sqlalchemy import select as sa_select
-    from .services.vapi import ensure_fallback_assistant, update_phone_number_fallback
+    """Ensure the generic Vapi fallback assistant exists (for reference/testing).
+
+    We do NOT set assistantId on phone numbers — doing so prevents Vapi from
+    sending assistant-request webhooks, which we need for dynamic prompt
+    building (time windows, on-call tech, business name, etc.).
+    Phone numbers use serverUrl only; assistant-request returns full config.
+    """
+    from .services.vapi import ensure_fallback_assistant
 
     try:
         async with AsyncSessionLocal() as db:
             fallback_id = await ensure_fallback_assistant(db)
-
-            result = await db.execute(
-                sa_select(Client).where(
-                    Client.vapi_phone_number_id.isnot(None),
-                    Client.status == "active",
-                )
-            )
-            clients = result.scalars().all()
-            for client in clients:
-                try:
-                    await update_phone_number_fallback(
-                        client.vapi_phone_number_id, fallback_id
-                    )
-                except Exception as e:
-                    print(f"[WARNING] Failed to set fallback on phone {client.vapi_phone_number_id}: {e}")
-
-            print(f"[INFO] Vapi fallback assistant ready ({fallback_id}), {len(clients)} phone number(s) updated")
+            print(f"[INFO] Vapi fallback assistant ready ({fallback_id})")
     except Exception as e:
         print(f"[WARNING] Fallback assistant setup failed (non-fatal): {e}")
 

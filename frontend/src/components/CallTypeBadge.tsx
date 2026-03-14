@@ -4,6 +4,7 @@ const colors: Record<string, string> = {
   message: 'bg-purple-100 text-purple-800',
   wrong_number: 'bg-gray-100 text-gray-600',
   hangup: 'bg-gray-100 text-gray-600',
+  business_hours_missed: 'bg-blue-100 text-blue-800',
   unknown: 'bg-gray-100 text-gray-600',
 };
 
@@ -13,6 +14,7 @@ const labels: Record<string, string> = {
   message: 'Message',
   wrong_number: 'Wrong Number',
   hangup: 'Hangup',
+  business_hours_missed: 'Missed (Business Hours)',
   unknown: 'Unknown',
 };
 

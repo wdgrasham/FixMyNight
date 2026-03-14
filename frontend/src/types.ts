@@ -68,6 +68,7 @@ export interface Client {
   business_days: number[];
   business_hours_schedule: BusinessHoursSchedule | null;
   business_hours_emergency_dispatch: boolean;
+  daytime_enabled: boolean;
   sleep_window_start: string | null;
   sleep_window_end: string | null;
   summary_send_time: string;
@@ -102,7 +103,7 @@ export interface Call {
   caller_name: string | null;
   caller_phone: string | null;
   issue_summary: string | null;
-  call_type: 'emergency' | 'routine' | 'message' | 'wrong_number' | 'hangup' | 'unknown';
+  call_type: 'emergency' | 'routine' | 'message' | 'wrong_number' | 'hangup' | 'business_hours_missed' | 'unknown';
   time_window: 'business_hours' | 'evening' | 'sleep';
   is_emergency: boolean;
   fee_offered: boolean;
@@ -201,4 +202,5 @@ export interface PortalSettingsPayload {
   emergency_enabled?: boolean;
   contact_email?: string;
   admin_sms_numbers?: string[];
+  daytime_enabled?: boolean;
 }

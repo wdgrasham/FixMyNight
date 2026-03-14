@@ -29,6 +29,19 @@ from ..services.twilio_service import send_sms
 from ..utils.audit import write_audit_log
 from ..limiter import limiter
 
+
+def _format_caller_phone_section(caller_phone: str) -> str:
+    """Format the caller's phone as individual digits for prompt injection."""
+    digits = caller_phone.lstrip("+1") if caller_phone.startswith("+1") else caller_phone.lstrip("+")
+    if len(digits) == 10:
+        g1 = " ".join(digits[:3])
+        g2 = " ".join(digits[3:6])
+        g3 = " ".join(digits[6:])
+        display_phone = f"{g1}, {g2}, {g3}"
+    else:
+        display_phone = " ".join(digits)
+    return f"\n\n---\n\nCALLER PHONE NUMBER:\nThe caller's phone number is {display_phone}. Use this when confirming their callback number."
+
 router = APIRouter(prefix="/api/v1/webhooks", tags=["webhooks"])
 
 
@@ -82,7 +95,35 @@ async def vapi_intake(request: Request, db: AsyncSession = Depends(get_db)):
             logger.warning("No client found for phoneNumberId=%s", phone_number_id)
             return {"error": "Client not found"}
         time_window = get_time_window(client)
-        first_message = build_first_message(client)
+        first_message = build_first_message(client, time_window)
+
+        # Business hours: minimal prompt, no transfers, quick message only
+        if time_window == "business_hours":
+            from ..services.prompt_builder import build_business_hours_prompt
+            prompt = build_business_hours_prompt(client)
+            if caller_phone:
+                prompt += _format_caller_phone_section(caller_phone)
+            response = {
+                "assistantId": client.vapi_assistant_id,
+                "assistantOverrides": {
+                    "model": {
+                        "provider": "openai",
+                        "model": "gpt-4o",
+                        "messages": [
+                            {"role": "system", "content": prompt},
+                        ],
+                        "temperature": 0.3,
+                    },
+                    "firstMessage": first_message,
+                    "firstMessageMode": "assistant-speaks-first",
+                    "endCallFunctionEnabled": True,
+                    "endCallMessage": None,
+                    "endCallPhrases": ["Have a great day", "Have a good day"],
+                    "silenceTimeoutSeconds": 30,
+                },
+            }
+            print(f"[VAPI] assistant-request: client={client.business_name}, tw={time_window}, caller={caller_phone}", file=sys.stderr, flush=True)
+            return response
 
         # Look up on-call tech for dynamic transfer destination
         tech_result = await db.execute(
@@ -98,17 +139,9 @@ async def vapi_intake(request: Request, db: AsyncSession = Depends(get_db)):
         transfer_dest = on_call_tech.phone if on_call_tech and time_window != "sleep" else None
         prompt = build_sarah_prompt(client, time_window, has_on_call_tech=bool(transfer_dest))
 
-        # Inject caller's phone number as individual digits with commas for pacing
+        # Inject caller's phone number
         if caller_phone:
-            digits = caller_phone.lstrip("+1") if caller_phone.startswith("+1") else caller_phone.lstrip("+")
-            if len(digits) == 10:
-                g1 = " ".join(digits[:3])
-                g2 = " ".join(digits[3:6])
-                g3 = " ".join(digits[6:])
-                display_phone = f"{g1}, {g2}, {g3}"
-            else:
-                display_phone = " ".join(digits)
-            prompt += f"\n\n---\n\nCALLER PHONE NUMBER:\nThe caller's phone number is {display_phone}. Use this when confirming their callback number."
+            prompt += _format_caller_phone_section(caller_phone)
 
         response = {
             "assistantId": client.vapi_assistant_id,
@@ -127,7 +160,7 @@ async def vapi_intake(request: Request, db: AsyncSession = Depends(get_db)):
                 "endCallFunctionEnabled": True,
                 "endCallMessage": None,
                 "endCallPhrases": ["Have a good night", "Goodnight"],
-                "silenceTimeoutSeconds": 60,
+                "silenceTimeoutSeconds": 30,
             },
         }
         print(f"[VAPI] assistant-request: client={client.business_name}, tw={time_window}, transfer_dest={transfer_dest}, caller={caller_phone}", file=sys.stderr, flush=True)
@@ -299,9 +332,13 @@ async def vapi_intake(request: Request, db: AsyncSession = Depends(get_db)):
         call_type = extracted.get("call_type", "unknown")
         time_window = get_time_window(client)
 
+        # Override call_type for business-hours calls (not wrong_number/hangup)
+        if time_window == "business_hours" and call_type not in ("wrong_number", "hangup"):
+            call_type = "business_hours_missed"
+
         # All emergencies are flagged urgent regardless of time window
         flagged_urgent = call_type == "emergency" or is_emergency
-        requires_callback = call_type in ("emergency", "routine") and not is_transfer
+        requires_callback = call_type in ("emergency", "routine", "business_hours_missed") and not is_transfer
 
         # Look up on-call tech for transfer metadata
         transferred_to_phone = None

@@ -41,6 +41,7 @@ PORTAL_EDITABLE_FIELDS = {
     "emergency_enabled",
     "contact_email",
     "admin_sms_numbers",
+    "daytime_enabled",
 }
 
 VAPI_REBUILD_TRIGGERS = {
@@ -271,6 +272,7 @@ async def get_settings(
         "agent_name": client.agent_name,
         "industry": client.industry,
         "business_hours_schedule": client.business_hours_schedule,
+        "daytime_enabled": client.daytime_enabled,
     }
 
 

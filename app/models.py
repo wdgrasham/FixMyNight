@@ -49,6 +49,8 @@ class Client(Base):
     last_monthly_summary_sent_date = Column(Date)
     plan_call_limit = Column(Integer)
     last_overage_reported_date = Column(Date)
+    daytime_enabled = Column(Boolean, nullable=False, default=False)
+    business_faq = Column(JSONB, nullable=False, default=dict)
 
 
 class Technician(Base):

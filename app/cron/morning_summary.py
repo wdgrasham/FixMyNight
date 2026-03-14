@@ -180,7 +180,7 @@ def _build_summary(client, calls, tz, tech_names=None) -> str:
         )
 
     emergencies = [c for c in calls if c.call_type == "emergency"]
-    routines = [c for c in calls if c.call_type == "routine"]
+    routines = [c for c in calls if c.call_type in ("routine", "business_hours_missed")]
     messages = [c for c in calls if c.call_type == "message"]
     wrong_numbers = [c for c in calls if c.call_type == "wrong_number"]
     hangups = [c for c in calls if c.call_type == "hangup"]

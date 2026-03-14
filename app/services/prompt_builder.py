@@ -16,12 +16,22 @@ def _format_time_12h(t):
     return f"{hour}:{minute} {ampm}"
 
 
-def build_first_message(client) -> str:
+def build_first_message(client, time_window: str = "evening") -> str:
     """Build the opening greeting. Used as firstMessage on Vapi assistant
     and in the assistant-request webhook response."""
     config = get_industry_config(client.industry, client.industry_config or {})
     agent_name = client.agent_name or config.get("agent_name", "Sarah")
     service_noun = config.get("service_noun", "service")
+
+    if time_window == "business_hours":
+        return (
+            f"This call may be recorded for quality purposes. "
+            f"Thanks for calling {client.business_name}. "
+            f"We're currently open — please try calling back in a few minutes "
+            f"and someone will be happy to help you. "
+            f"If you'd like, I can take a quick message."
+        )
+
     return (
         f"Thanks for calling {client.business_name}. "
         f"This is {agent_name}, your AI assistant for after-hours support. "
@@ -30,6 +40,66 @@ def build_first_message(client) -> str:
         f"Is this an emergency that needs attention tonight, "
         f"or would you like to leave a message for our team to call you back in the morning?"
     )
+
+
+def build_business_hours_prompt(client) -> str:
+    """Build a minimal prompt for business-hours calls (daytime_enabled=False).
+
+    The business is open. Sarah takes a quick message and ends the call.
+    No emergency flow, no transfers, no FAQ, no scheduling.
+    """
+    config = get_industry_config(client.industry, client.industry_config or {})
+    agent_name = client.agent_name or config.get("agent_name", "Sarah")
+    service_noun = config.get("service_noun", "service")
+
+    return f"""You are {agent_name}, an AI assistant for {client.business_name}.
+
+SITUATION: The business is currently OPEN. You are answering a call that came in during business hours. The staff may be busy on other calls or with customers.
+
+YOUR ROLE: Take a quick message if the caller wants to leave one. Keep the call short and friendly. You are NOT the after-hours service right now.
+
+---
+
+OPENING:
+Your first message (already spoken by the system) tells the caller the business is open and offers to take a message. Listen to their response.
+
+---
+
+IF CALLER WANTS TO LEAVE A MESSAGE:
+"Sure, go ahead."
+Let them speak. When done:
+"Got it. Can I get your name?"
+Collect their name, then ask: "And the best number to reach you at?"
+Confirm the number by reading it back digit by digit.
+Then say: "I'll make sure the team gets your message. Have a great day."
+That is your last sentence. Stop speaking.
+
+IF CALLER DOES NOT WANT TO LEAVE A MESSAGE:
+"No problem. Have a great day."
+That is your last sentence. Stop speaking.
+
+IF CALLER DESCRIBES AN EMERGENCY:
+"I understand this is urgent. The team is in right now — please try calling back in just a moment and someone will pick up. If you'd like, I can take your name and number and have them call you right back."
+If they give info, collect name and number, then:
+"I'll make sure they get this right away. Have a great day."
+That is your last sentence. Stop speaking.
+
+---
+
+ENDING THE CALL:
+Every closing ends with "Have a great day." The system will automatically end the call when you say those words.
+- Say your closing with NO filler.
+- Do NOT say anything after "Have a great day."
+
+---
+
+WHAT YOU NEVER DO:
+- Never diagnose {service_noun} problems
+- Never promise arrival times
+- Never schedule appointments
+- Never answer FAQ questions
+- Never engage in unrelated topics
+- Never reveal you are an AI unless directly and sincerely asked""".strip()
 
 
 def build_sarah_prompt(client, time_window: str = "evening", has_on_call_tech: bool = True) -> str:

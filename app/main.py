@@ -114,6 +114,14 @@ async def lifespan(app: FastAPI):
             "WHERE subscription_tier IS NOT NULL AND plan_call_limit IS NULL"
         ))
 
+        # Daytime tier columns
+        await conn.execute(text(
+            "ALTER TABLE clients ADD COLUMN IF NOT EXISTS daytime_enabled BOOLEAN NOT NULL DEFAULT FALSE"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE clients ADD COLUMN IF NOT EXISTS business_faq JSONB NOT NULL DEFAULT '{}'"
+        ))
+
     # Startup: start cron scheduler
     scheduler.add_job(morning_summary_job, "interval", minutes=1, id="morning_summary")
     scheduler.add_job(oncall_reminder_job, "interval", minutes=1, id="oncall_reminder")

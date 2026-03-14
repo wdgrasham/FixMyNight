@@ -109,6 +109,7 @@ class ClientCreate(BaseModel):
     summary_send_time: str = "07:30"
     callback_expected_time: str = "09:00"
     agent_name: str = "Sarah"
+    daytime_enabled: bool = False
     technicians: Optional[List[TechnicianCreate]] = None
 
     @field_validator('owner_phone')
@@ -143,6 +144,7 @@ class ClientUpdate(BaseModel):
     summary_send_time: Optional[str] = None
     callback_expected_time: Optional[str] = None
     agent_name: Optional[str] = None
+    daytime_enabled: Optional[bool] = None
     status: Optional[str] = None
     subscription_tier: Optional[str] = None
 
@@ -175,6 +177,7 @@ class PortalSettingsUpdate(BaseModel):
     emergency_enabled: Optional[bool] = None
     contact_email: Optional[EmailStr] = None
     admin_sms_numbers: Optional[List[str]] = None
+    daytime_enabled: Optional[bool] = None
 
     @field_validator('admin_sms_numbers')
     @classmethod
@@ -200,6 +203,7 @@ class ClientResponse(BaseModel):
     business_days: Optional[List[int]] = None
     business_hours_schedule: Optional[dict] = None
     business_hours_emergency_dispatch: bool
+    daytime_enabled: bool = False
     sleep_window_start: Optional[time] = None
     sleep_window_end: Optional[time] = None
     summary_send_time: Optional[time] = None

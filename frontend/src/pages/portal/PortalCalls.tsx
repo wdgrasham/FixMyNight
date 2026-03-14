@@ -15,7 +15,7 @@ function formatDuration(seconds: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-const CALL_TYPES = ['', 'emergency', 'routine', 'message', 'wrong_number', 'hangup', 'unknown'];
+const CALL_TYPES = ['', 'emergency', 'routine', 'message', 'wrong_number', 'hangup', 'business_hours_missed', 'unknown'];
 const TRANSFER_STATUSES = ['', 'transferred', 'not_transferred'];
 const PAGE_SIZE = 20;
 

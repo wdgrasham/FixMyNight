@@ -118,15 +118,14 @@ async def vapi_intake(request: Request, db: AsyncSession = Depends(get_db)):
                     {
                         "on": "customer.speech.timeout",
                         "options": {
-                            "timeoutSeconds": 7,
-                            "triggerMaxCount": 2,
+                            "timeoutSeconds": 15,
+                            "triggerMaxCount": 1,
                             "triggerResetMode": "onUserSpeech",
                         },
                         "do": [
                             {
                                 "type": "say",
                                 "exact": [
-                                    "Hello, are you there?",
                                     f"It seems like we got disconnected. If you need help, please call {client.business_name} back. Have a good night.",
                                 ],
                             }

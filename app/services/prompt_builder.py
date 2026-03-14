@@ -73,11 +73,8 @@ def build_sarah_prompt(client, time_window: str = "evening") -> str:
     if client.emergency_fee:
         fee_display = f"${client.emergency_fee:.2f}"
 
-    # Emergency Pity + universal safety disclaimer (Architecture Rule #7)
-    emergency_pity = (
-        "I am sorry that you are having an issue. "
-        "If you feel the situation may be unsafe, please don't hesitate to contact your local emergency services."
-    )
+    # Emergency Pity — empathy only, no safety advice
+    emergency_pity = "I am sorry that you are having an issue."
 
     # --- Build emergency section based on time window + client config ---
     if time_window == "sleep":
@@ -89,7 +86,7 @@ def build_sarah_prompt(client, time_window: str = "evening") -> str:
             f"but I'll make sure this is flagged as a high-priority emergency and our team will reach out "
             f'to you first thing in the morning, usually by {callback_time}."\n'
             f"Collect their name, then use the CALLBACK NUMBER COLLECTION flow below to get their number.\n"
-            f"Get a brief description of the issue.\n"
+            f"If the caller has already described their issue, do NOT ask them to repeat it — summarize what they said for confirmation instead. Only ask for a description if they haven't stated the problem yet.\n"
             f"Do NOT call transferCall during the sleep window under any circumstances."
         )
     elif not client.emergency_enabled:
@@ -101,7 +98,7 @@ def build_sarah_prompt(client, time_window: str = "evening") -> str:
             f"available tonight, but I'll make sure this is flagged as high priority and our team will "
             f'reach out to you first thing, usually by {callback_time}."\n'
             f"Collect their name, then use the CALLBACK NUMBER COLLECTION flow below to get their number.\n"
-            f"Get a brief description of the issue.\n"
+            f"If the caller has already described their issue, do NOT ask them to repeat it — summarize what they said for confirmation instead. Only ask for a description if they haven't stated the problem yet.\n"
             f"Do NOT call transferCall."
         )
     elif fee_display:
@@ -116,7 +113,7 @@ def build_sarah_prompt(client, time_window: str = "evening") -> str:
             f'"Perfect, I\'ll be transferring you to our on-call {tech_title}. '
             f'While I work on that, can I get your name?"\n'
             f"Collect their name, then use the CALLBACK NUMBER COLLECTION flow below to get their number.\n"
-            f"Get a brief description of the issue.\n"
+            f"If the caller has already described their issue, do NOT ask them to repeat it — summarize what they said for confirmation instead. Only ask for a description if they haven't stated the problem yet.\n"
             f"Call transferCall with the collected information.\n"
             f"If transfer fails: immediately follow the AFTER FAILED TRANSFER script below.\n\n"
             f"If caller DECLINES the fee:\n"
@@ -131,7 +128,7 @@ def build_sarah_prompt(client, time_window: str = "evening") -> str:
             f'Then say: "Before I get you connected with our on-call {tech_title} team, '
             f'can I get your name?"\n'
             f"Collect their name, then use the CALLBACK NUMBER COLLECTION flow below to get their number.\n"
-            f"Get a brief description of the issue.\n"
+            f"If the caller has already described their issue, do NOT ask them to repeat it — summarize what they said for confirmation instead. Only ask for a description if they haven't stated the problem yet.\n"
             f"Call transferCall with the collected information.\n"
             f"If transfer fails: immediately follow the AFTER FAILED TRANSFER script below."
         )
@@ -280,7 +277,7 @@ After collecting the caller's name, get their callback number using this flow:
 
 If the caller's phone number is visible (caller ID is available):
 "And the best number to reach you — is it the number you're calling from?"
-- If YES → use the caller's phone number from caller ID. Read it back to confirm: "Great, I have [number] on file — is that correct?" Then move on.
+- If YES → Read back the actual digits from caller ID to confirm: "Great, I have your number as [read digits individually, e.g. 3 4 6, 5 5 5, 1 2 3 4] — is that correct?" Then move on. NEVER say "caller ID" — always say the actual digits.
 - If NO → "No problem. What number should we call you back at?" Collect the number, then follow PHONE NUMBER VERIFICATION below.
 
 If the caller's phone number is NOT visible (blocked, unknown, or unavailable):

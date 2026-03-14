@@ -44,7 +44,7 @@ updated between sessions.
 | Phone/SMS | Twilio | Inbound calls + SMS on-call management |
 | Email | SendGrid | Morning summary delivery |
 
-## 10 Architecture Rules — Never Violate These
+## 11 Architecture Rules — Never Violate These
 
 1. **All primary keys are UUID.** Use `gen_random_uuid()`. Never SERIAL or integer PKs.
 2. **Single `audit_logs` table.** JSONB metadata, event-log style. Not `audit_log` (singular).
@@ -52,10 +52,11 @@ updated between sessions.
 4. **Transfer before DB write.** Emergency transfer attempt FIRST, then write the call record. A DB failure must never block a live transfer.
 5. **Three time windows per client:** `business_hours`, `evening`, `sleep`. Sleep has highest priority. See MASTER-SPEC.md for the full decision tree.
 6. **Always-on system.** FixMyNight never checks the clock to decide whether to answer. The contractor controls routing via their own call forwarding.
-7. **No prescriptive safety advice.** One soft disclaimer for all emergencies: "If you feel the situation may be unsafe, please don't hesitate to contact your local emergency services." No "leave your building" or "turn off valves."
+7. **No safety advice of any kind.** FixMyNight is an answering service, not a safety authority. No emergency services recommendation, no "leave your building," no "turn off valves." Empathy only: "I am sorry that you are having an issue."
 8. **One on-call tech per client.** Enforced by partial unique index. Backend sets current on-call to FALSE before setting new to TRUE.
 9. **Unknown SMS senders: silent ignore.** No reply, no error, no log entry.
 10. **JWT errors:** `ExpiredSignatureError` → `SESSION_EXPIRED`. All other `JWTError` → `TOKEN_INVALID`. Must be caught separately.
+11. **NEVER set `assistantId` on Vapi phone numbers.** The system uses `assistant-request` webhooks to dynamically generate prompts per-call based on client config, time window, and on-call status. Setting `assistantId` bypasses this entirely and breaks all dynamic behavior. The fallback assistant exists only as a Vapi-level fallback if the webhook fails — it must not be assigned to phone numbers.
 
 ## Build Phases
 

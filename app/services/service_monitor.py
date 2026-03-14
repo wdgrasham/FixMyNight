@@ -281,7 +281,7 @@ async def _check_stripe() -> dict:
 
 
 async def _check_sendgrid() -> dict:
-    """Check SendGrid — verify key works and try to get stats."""
+    """Check SendGrid — usage stats, plan info, and daily/monthly send counts."""
     api_key = os.environ.get("SENDGRID_API_KEY", "")
     if not api_key:
         return {"status": "error", "error": "SENDGRID_API_KEY not configured"}
@@ -290,53 +290,75 @@ async def _check_sendgrid() -> dict:
         today = datetime.utcnow()
         month_start = today.replace(day=1).strftime("%Y-%m-%d")
         today_str = today.strftime("%Y-%m-%d")
+        headers = {"Authorization": f"Bearer {api_key}"}
 
-        async with httpx.AsyncClient(timeout=10) as client:
-            # Try stats first
-            resp = await client.get(
-                "https://api.sendgrid.com/v3/stats",
-                params={"start_date": month_start, "end_date": today_str},
-                headers={"Authorization": f"Bearer {api_key}"},
+        async with httpx.AsyncClient(timeout=15) as client:
+            # Fetch all in parallel: monthly stats, today stats, account info
+            month_resp, today_resp, account_resp = await asyncio.gather(
+                client.get(
+                    "https://api.sendgrid.com/v3/stats",
+                    params={"start_date": month_start, "end_date": today_str},
+                    headers=headers,
+                ),
+                client.get(
+                    "https://api.sendgrid.com/v3/stats",
+                    params={"start_date": today_str, "end_date": today_str},
+                    headers=headers,
+                ),
+                client.get(
+                    "https://api.sendgrid.com/v3/user/account",
+                    headers=headers,
+                ),
             )
-            if resp.status_code == 200:
-                data = resp.json()
-                total_requests = 0
-                total_delivered = 0
-                total_bounces = 0
-                for day in data:
+
+            # Parse monthly stats
+            month_sent = month_delivered = month_bounces = 0
+            if month_resp.status_code == 200:
+                for day in month_resp.json():
                     for metric in day.get("stats", []):
                         m = metric.get("metrics", {})
-                        total_requests += m.get("requests", 0)
-                        total_delivered += m.get("delivered", 0)
-                        total_bounces += m.get("bounces", 0)
-                return {
-                    "status": "ok",
-                    "emails_sent": total_requests,
-                    "emails_delivered": total_delivered,
-                    "bounces": total_bounces,
-                    "dashboard_url": "https://app.sendgrid.com",
-                    "warning": False,
-                    "critical": False,
-                }
+                        month_sent += m.get("requests", 0)
+                        month_delivered += m.get("delivered", 0)
+                        month_bounces += m.get("bounces", 0)
 
-            # Stats API needs higher scope — fall back to profile check
-            profile_resp = await client.get(
-                "https://api.sendgrid.com/v3/user/profile",
-                headers={"Authorization": f"Bearer {api_key}"},
-            )
-            if profile_resp.status_code == 200:
-                return {
-                    "status": "ok",
-                    "note": "API key valid (mail.send scope only -- add stats scope for usage data)",
-                    "dashboard_url": "https://app.sendgrid.com",
-                    "warning": False,
-                    "critical": False,
-                }
-            return {
-                "status": "error",
-                "error": "API key invalid",
+            # Parse today stats
+            today_sent = today_delivered = 0
+            if today_resp.status_code == 200:
+                for day in today_resp.json():
+                    for metric in day.get("stats", []):
+                        m = metric.get("metrics", {})
+                        today_sent += m.get("requests", 0)
+                        today_delivered += m.get("delivered", 0)
+
+            # Parse account/plan info
+            plan_name = "Unknown"
+            plan_type = "Unknown"
+            if account_resp.status_code == 200:
+                acct = account_resp.json()
+                plan_name = acct.get("type", "Unknown")
+                plan_type = acct.get("reputation", plan_name)
+
+            # Free tier: 100/day. Essentials+: effectively unlimited daily, monthly cap.
+            daily_limit = 100 if plan_name.lower() == "free" else None
+            warning = daily_limit and today_sent >= daily_limit * 0.8
+            critical = daily_limit and today_sent >= daily_limit
+
+            result = {
+                "status": "ok",
+                "emails_sent_today": today_sent,
+                "emails_delivered_today": today_delivered,
+                "emails_sent_month": month_sent,
+                "emails_delivered_month": month_delivered,
+                "bounces_month": month_bounces,
+                "plan": plan_name,
                 "dashboard_url": "https://app.sendgrid.com",
+                "warning": bool(warning),
+                "critical": bool(critical),
             }
+            if daily_limit:
+                result["daily_limit"] = daily_limit
+            return result
+
     except Exception as e:
         return {"status": "error", "error": str(e), "dashboard_url": "https://app.sendgrid.com"}
 

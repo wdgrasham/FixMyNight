@@ -30,9 +30,13 @@ interface ServiceData {
   mrr?: number;
   revenue_this_month?: number;
   // SendGrid
-  emails_sent?: number;
-  emails_delivered?: number;
-  bounces?: number;
+  emails_sent_today?: number;
+  emails_delivered_today?: number;
+  emails_sent_month?: number;
+  emails_delivered_month?: number;
+  bounces_month?: number;
+  plan?: string;
+  daily_limit?: number;
 }
 
 interface ServiceStatusResponse {
@@ -114,12 +118,16 @@ function ServiceCard({ id, svc }: { id: string; svc: ServiceData }) {
           </div>
         );
       case 'sendgrid':
-        if (svc.emails_sent != null) {
+        if (svc.emails_sent_today != null || svc.emails_sent_month != null) {
           return (
             <div className="space-y-2">
-              <Metric label="Emails Sent" value={String(svc.emails_sent)} />
-              <Metric label="Delivered" value={String(svc.emails_delivered ?? 0)} />
-              {(svc.bounces ?? 0) > 0 && <Metric label="Bounces" value={String(svc.bounces)} highlight />}
+              {svc.plan && <Metric label="Plan" value={svc.plan} />}
+              <Metric label="Sent Today" value={String(svc.emails_sent_today ?? 0)} highlight={svc.warning} />
+              {svc.daily_limit != null && <Metric label="Daily Limit" value={String(svc.daily_limit)} />}
+              <Metric label="Delivered Today" value={String(svc.emails_delivered_today ?? 0)} />
+              <Metric label="Sent This Month" value={String(svc.emails_sent_month ?? 0)} />
+              <Metric label="Delivered This Month" value={String(svc.emails_delivered_month ?? 0)} />
+              {(svc.bounces_month ?? 0) > 0 && <Metric label="Bounces (Month)" value={String(svc.bounces_month)} highlight />}
             </div>
           );
         }

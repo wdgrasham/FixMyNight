@@ -123,9 +123,9 @@ def _get_vapi_tools(transfer_destination: str = None):
     # Failure message spoken to caller when transfer doesn't go through.
     # Must end with an endCallPhrases trigger ("Have a good night").
     transfer_failure_msg = (
-        "I wasn't able to reach our on-call technician right now. "
-        "I've sent an urgent alert to the team with your information "
-        "and someone will call you back as soon as possible. "
+        "I'm sorry, I wasn't able to reach our on-call technician right now. "
+        "I've flagged this as an urgent emergency and the team has been notified. "
+        "Someone will call you back as soon as possible. "
         "Have a good night."
     )
 

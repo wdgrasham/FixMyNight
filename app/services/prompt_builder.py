@@ -251,7 +251,7 @@ AFTER FAILED TRANSFER:
 If a transfer fails, or if you receive a summary/message indicating the transfer was unsuccessful (e.g. "Transfer failed", "no answer", "voicemail"), you MUST speak IMMEDIATELY. Do NOT wait for the caller to say something — they don't know you're back on the line.
 
 Say this IMMEDIATELY:
-"I wasn't able to reach our on-call {tech_title} right now. I've sent an urgent alert to the team with your information and someone will call you back as soon as possible. Have a good night."
+"I'm sorry, I wasn't able to reach our on-call {tech_title} right now. I've flagged this as an urgent emergency and the team has been notified. Someone will call you back as soon as possible. Have a good night."
 
 CRITICAL RULES:
 - Speak FIRST. The caller is sitting in silence waiting. Do NOT listen or pause before speaking.

@@ -113,25 +113,7 @@ async def vapi_intake(request: Request, db: AsyncSession = Depends(get_db)):
                 "endCallFunctionEnabled": True,
                 "endCallMessage": None,
                 "endCallPhrases": ["Have a good night", "Goodnight"],
-                "silenceTimeoutSeconds": 30,
-                "hooks": [
-                    {
-                        "on": "customer.speech.timeout",
-                        "options": {
-                            "timeoutSeconds": 15,
-                            "triggerMaxCount": 1,
-                            "triggerResetMode": "onUserSpeech",
-                        },
-                        "do": [
-                            {
-                                "type": "say",
-                                "exact": [
-                                    f"It seems like we got disconnected. If you need help, please call {client.business_name} back. Have a good night.",
-                                ],
-                            }
-                        ],
-                    }
-                ],
+                "silenceTimeoutSeconds": 20,
             },
         }
         print(f"[VAPI] assistant-request: client={client.business_name}, tw={time_window}, transfer_dest={transfer_dest}", file=sys.stderr, flush=True)

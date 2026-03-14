@@ -113,7 +113,7 @@ async def vapi_intake(request: Request, db: AsyncSession = Depends(get_db)):
                 "endCallFunctionEnabled": True,
                 "endCallMessage": None,
                 "endCallPhrases": ["Have a good night", "Goodnight"],
-                "silenceTimeoutSeconds": 10,
+                "silenceTimeoutSeconds": 30,
             },
         }
         print(f"[VAPI] assistant-request: client={client.business_name}, tw={time_window}, transfer_dest={transfer_dest}", file=sys.stderr, flush=True)

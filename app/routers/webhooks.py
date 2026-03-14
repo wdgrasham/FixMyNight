@@ -94,14 +94,15 @@ async def vapi_intake(request: Request, db: AsyncSession = Depends(get_db)):
             )
         )
         on_call_tech = tech_result.scalar_one_or_none()
-        transfer_dest = on_call_tech.phone if on_call_tech else None
-        prompt = build_sarah_prompt(client, time_window, has_on_call_tech=bool(on_call_tech))
+        # No transfers during sleep window or when no tech is on-call
+        transfer_dest = on_call_tech.phone if on_call_tech and time_window != "sleep" else None
+        prompt = build_sarah_prompt(client, time_window, has_on_call_tech=bool(transfer_dest))
 
-        # Inject caller's phone number formatted with dashes for natural readback
+        # Inject caller's phone number formatted for natural readback pacing
         if caller_phone:
             digits = caller_phone.lstrip("+1") if caller_phone.startswith("+1") else caller_phone.lstrip("+")
             if len(digits) == 10:
-                display_phone = f"{digits[:3]}-{digits[3:6]}-{digits[6:]}"
+                display_phone = f"{digits[:3]} ... {digits[3:6]} ... {digits[6:]}"
             else:
                 display_phone = digits
             prompt += f"\n\n---\n\nCALLER PHONE NUMBER:\nThe caller's phone number is {display_phone}. Use this when confirming their callback number."

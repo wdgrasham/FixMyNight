@@ -347,8 +347,7 @@ function PricingSection() {
             Simple, Transparent Pricing
           </h2>
           <p className="mt-4 text-lg leading-relaxed text-[#64748B]">
-            Traditional answering services charge <span className="text-[#0F172A] font-semibold">$400–600/month</span> for a human
-            who reads from a script. FixMyNight's AI answers every call — day and night — for a fraction of the cost.
+            Traditional answering services charge <span className="text-[#0F172A] font-semibold">$2.50/minute plus setup fees</span>. Your AI assistant answers every call you can't — day and night — for a fraction of the cost.
           </p>
           <p className="mt-2 text-sm text-[#94A3B8]">
             All plans include daytime message-taking + after-hours AI assistant

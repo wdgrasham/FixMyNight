@@ -63,7 +63,7 @@ export default function ClientDetail() {
       if (costData) setCostStats(costData);
 
       // Duplicate business name warning for pending clients
-      if (clientData.status === 'pending_setup' || clientData.status === 'pending') {
+      if (clientData.status === 'pending') {
         try {
           const allClients = await api<Client[]>('/api/v1/admin/clients');
           const duplicate = allClients.find(

@@ -173,16 +173,20 @@ async def send_magic_link(
     token = create_magic_link_token(str(client.id))
     frontend_url = os.environ.get("FRONTEND_URL", "https://fixmyday.ai")
     link = f"{frontend_url}/fixmynight/portal/setup?token={token}"
-    await send_summary_email(
-        to_email=client.contact_email,
-        subject=f"{client.business_name} — Set Up Your FixMyNight Portal",
-        body=(
-            f"Hi {client.owner_name},\n\n"
-            f"Click below to set up your FixMyNight portal:\n{link}\n\n"
-            f"This link expires in 24 hours.\n\n"
-            f"— FixMyNight"
-        ),
-    )
+    try:
+        await send_summary_email(
+            to_email=client.contact_email,
+            subject=f"{client.business_name} — Set Up Your FixMyNight Portal",
+            body=(
+                f"Hi {client.owner_name},\n\n"
+                f"Click below to set up your FixMyNight portal:\n{link}\n\n"
+                f"This link expires in 24 hours.\n\n"
+                f"— FixMyNight"
+            ),
+        )
+    except Exception as e:
+        print(f"[ERROR] Portal magic link email failed for client {client.id} to {client.contact_email}: {e}")
+        raise HTTPException(status_code=502, detail=f"Email delivery failed: {e}")
     return {"status": "sent"}
 
 

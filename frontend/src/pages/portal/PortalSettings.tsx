@@ -67,7 +67,6 @@ export default function PortalSettings() {
       emergency_enabled: settings.emergency_enabled,
       contact_email: settings.contact_email,
       admin_sms_numbers: settings.admin_sms_numbers,
-      daytime_enabled: settings.daytime_enabled,
       missed_call_notify_phones: settings.missed_call_notify_phones,
     };
 
@@ -227,26 +226,6 @@ export default function PortalSettings() {
               />
               <span className="text-sm font-medium text-gray-700">Emergency Dispatch During Business Hours</span>
             </label>
-          </div>
-        </section>
-
-        {/* Daytime AI Receptionist */}
-        <section className="bg-white rounded-lg border border-gray-200 p-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Daytime AI Receptionist</h2>
-          <div className="space-y-3">
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={settings.daytime_enabled}
-                onChange={(e) => update('daytime_enabled', e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300 text-[#F59E0B] focus:ring-[#F59E0B]"
-              />
-              <span className="text-sm font-medium text-gray-700">Enable Daytime AI Receptionist</span>
-            </label>
-            <p className="text-xs text-gray-500">
-              When enabled, the AI will handle calls during business hours — answering FAQs, qualifying leads, and taking messages.
-              When disabled, callers during business hours are told the office is open and offered to leave a quick message.
-            </p>
           </div>
         </section>
 

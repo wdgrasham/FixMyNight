@@ -19,8 +19,8 @@ from ..schemas import (
     CallsListResponse,
 )
 from ..utils.audit import write_audit_log
-from ..services.vapi import rebuild_vapi_assistant
-from ..services.twilio_service import send_verification_sms, send_sms
+from ..services.vapi import rebuild_vapi_assistant, delete_vapi_assistant, delete_vapi_phone_number
+from ..services.twilio_service import send_verification_sms, send_sms, release_twilio_number
 from ..services.onboarding import provision_client, complete_setup, change_twilio_number
 from ..services.email_service import send_summary_email
 from ..services.service_monitor import get_all_service_status
@@ -394,10 +394,35 @@ async def delete_client(
     client = result.scalar_one_or_none()
     if not client:
         raise HTTPException(status_code=404, detail="CLIENT_NOT_FOUND")
+
+    # Release external resources to stop billing
+    released_number = None
+    if client.vapi_phone_number_id:
+        try:
+            await delete_vapi_phone_number(client.vapi_phone_number_id)
+        except Exception as e:
+            print(f"[WARNING] Failed to delete Vapi phone number on deactivate: {e}")
+    if client.vapi_assistant_id:
+        try:
+            await delete_vapi_assistant(client.vapi_assistant_id)
+        except Exception as e:
+            print(f"[WARNING] Failed to delete Vapi assistant on deactivate: {e}")
+    if client.twilio_number and not client.twilio_number.startswith("pending_"):
+        try:
+            await release_twilio_number(client.twilio_number)
+            released_number = client.twilio_number
+        except Exception as e:
+            print(f"[WARNING] Failed to release Twilio number on deactivate: {e}")
+
     await db.execute(
         update(Client)
         .where(Client.id == client_id)
-        .values(status="inactive", updated_at=datetime.utcnow())
+        .values(
+            status="inactive",
+            vapi_assistant_id=None,
+            vapi_phone_number_id=None,
+            updated_at=datetime.utcnow(),
+        )
     )
     await db.commit()
     await write_audit_log(
@@ -411,6 +436,7 @@ async def delete_client(
             "field": "status",
             "old_value": client.status,
             "new_value": "inactive",
+            "released_number": released_number,
         },
     )
     return {"status": "deactivated"}

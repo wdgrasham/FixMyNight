@@ -19,10 +19,13 @@ type ClientListItem = Client & {
   subscription_tier?: string | null;
 };
 
+type Filter = 'active' | 'all' | 'inactive';
+
 export default function ClientList() {
   const [clients, setClients] = useState<ClientListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [filter, setFilter] = useState<Filter>('active');
 
   useEffect(() => {
     (async () => {
@@ -52,6 +55,23 @@ export default function ClientList() {
         </Link>
       </div>
 
+      {/* Filter tabs */}
+      <div className="flex gap-1 mb-4">
+        {(['active', 'all', 'inactive'] as Filter[]).map((f) => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            className={`px-3 py-1.5 text-sm font-medium rounded-md ${
+              filter === f
+                ? 'bg-[#F59E0B] text-[#0F172A]'
+                : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+            }`}
+          >
+            {f === 'active' ? `Active (${clients.filter((c) => c.status === 'active' || c.status === 'pending_setup').length})` : f === 'inactive' ? `Inactive (${clients.filter((c) => c.status === 'inactive' || c.status === 'failed').length})` : `All (${clients.length})`}
+          </button>
+        ))}
+      </div>
+
       <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
@@ -70,14 +90,22 @@ export default function ClientList() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {clients.length === 0 ? (
+            {clients.filter((c) => {
+              if (filter === 'active') return c.status === 'active' || c.status === 'pending_setup' || c.status === 'pending';
+              if (filter === 'inactive') return c.status === 'inactive' || c.status === 'failed';
+              return true;
+            }).length === 0 ? (
               <tr>
                 <td colSpan={11} className="px-4 py-8 text-center text-sm text-gray-500">
-                  No clients yet. <Link to={ROUTES.ADMIN_CLIENT_NEW} className="text-[#F59E0B] underline">Create one</Link>.
+                  {filter === 'active' ? <>No active clients. <Link to={ROUTES.ADMIN_CLIENT_NEW} className="text-[#F59E0B] underline">Create one</Link>.</> : 'No clients in this category.'}
                 </td>
               </tr>
             ) : (
-              clients.map((client) => (
+              clients.filter((c) => {
+                if (filter === 'active') return c.status === 'active' || c.status === 'pending_setup' || c.status === 'pending';
+                if (filter === 'inactive') return c.status === 'inactive' || c.status === 'failed';
+                return true;
+              }).map((client) => (
                 <tr key={client.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3">
                     <Link to={ROUTES.ADMIN_CLIENT_DETAIL(client.id)} className="text-sm font-medium text-[#F59E0B] hover:text-[#D97706]">

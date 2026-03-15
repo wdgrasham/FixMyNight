@@ -623,3 +623,37 @@ async def fallback_status(
         "fallback_assistant_id": fallback_id,
         "active_phone_numbers": phones,
     }
+
+
+@router.post("/clients/{client_id}/clear-test-calls")
+async def clear_test_calls(
+    client_id: str,
+    admin=Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Mark all existing calls for a client as summary-sent so they
+    don't appear in future morning summaries. Does NOT delete calls —
+    they remain visible in call history."""
+    result = await db.execute(
+        select(Client).where(Client.id == client_id)
+    )
+    client = result.scalar_one_or_none()
+    if not client:
+        raise HTTPException(404, "Client not found")
+
+    updated = await db.execute(
+        update(Call)
+        .where(Call.client_id == client.id, Call.morning_summary_sent_at == None)
+        .values(morning_summary_sent_at=datetime.utcnow())
+    )
+    await db.commit()
+
+    count = updated.rowcount
+    await write_audit_log(
+        db,
+        "admin.clear_test_calls",
+        "admin",
+        client_id=client.id,
+        metadata={"calls_marked": count},
+    )
+    return {"status": "ok", "calls_marked": count}

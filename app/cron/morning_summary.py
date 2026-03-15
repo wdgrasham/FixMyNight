@@ -72,6 +72,9 @@ async def _maybe_send_morning_summary(client, db: AsyncSession):
     now = datetime.now(tz)
     today = now.date()
 
+    # Capture previous summary date BEFORE claiming
+    prev_summary_date = client.last_summary_sent_date
+
     # ── STEP 1: Claim this client BEFORE doing any work ──────────────
     # Set the sent-date flag and commit immediately.  This prevents
     # duplicate sends if the email/SMS step is slow and the next cron
@@ -83,12 +86,24 @@ async def _maybe_send_morning_summary(client, db: AsyncSession):
     )
     await db.commit()
 
-    # ── STEP 2: Fetch unsent calls ───────────────────────────────────
+    # ── STEP 2: Fetch unsent calls (since last summary) ─────────────
+    # Only include calls created after the previous summary date.
+    # This prevents historical/test calls from appearing in summaries.
+    # Uses a 48-hour lookback as safety net if no previous summary exists.
+    from datetime import timedelta
+    if prev_summary_date:
+        # Pull calls since start of the last summary day (in client timezone)
+        cutoff = datetime.combine(prev_summary_date, datetime.min.time(), tzinfo=tz)
+    else:
+        # First summary ever — 48-hour lookback
+        cutoff = now - timedelta(hours=48)
+
     calls_result = await db.execute(
         select(Call)
         .where(
             Call.client_id == client.id,
             Call.morning_summary_sent_at == None,
+            Call.created_at >= cutoff,
         )
         .order_by(Call.flagged_urgent.desc(), Call.created_at.asc())
     )

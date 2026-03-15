@@ -5,7 +5,8 @@ import {
   Menu, X, ArrowRight, Mail, Check, Star, Phone, Clock, Shield,
   Bot, Siren, Sunrise, MessageSquare, PhoneOff, Smartphone,
   Thermometer, Droplets, Zap, KeyRound, DoorOpen, Wrench, PanelTop,
-  ShieldCheck, FileText, Scale,
+  ShieldCheck, FileText, Scale, DollarSign, TrendingDown, PhoneMissed, UserX,
+  Rocket, Ban, CalendarOff, XCircle,
 } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
@@ -147,13 +148,13 @@ function Hero() {
 
       {/* Curved divider */}
       <div className="relative -mt-px bg-white">
-        <svg viewBox="0 0 1440 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="block w-full h-auto" preserveAspectRatio="none">
+        <svg viewBox="0 0 1440 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="block w-full h-auto -mb-px" preserveAspectRatio="none">
           <path d="M0,0 C360,100 1080,100 1440,0 L1440,100 L0,100 Z" fill="#0F172A" />
         </svg>
       </div>
 
       {/* Navy value-prop bar */}
-      <div className="relative bg-[#0F172A] pb-16 md:pb-20">
+      <div className="relative bg-[#0F172A] pb-16 md:pb-20 -mt-px">
         <div className="mx-auto max-w-5xl px-6">
           <div className="grid gap-8 sm:grid-cols-3 text-center">
             {[
@@ -256,6 +257,75 @@ function Industries() {
   );
 }
 
+/* ─── Social Proof / Industry Stats ─── */
+function SocialProof() {
+  const stats = [
+    { icon: PhoneMissed, value: '62%', label: 'of contractor calls go unanswered during business hours' },
+    { icon: DollarSign, value: '$525', label: 'average revenue lost per missed call' },
+    { icon: UserX, value: '78%', label: 'of customers call the next contractor if you don\'t answer' },
+    { icon: TrendingDown, value: '50%', label: 'of callers who hit voicemail hang up immediately' },
+  ];
+
+  return (
+    <section className="relative bg-[#F8FAFC] py-24 md:py-32">
+      <div className="mx-auto max-w-6xl px-6">
+        <div className="mx-auto max-w-2xl text-center mb-16">
+          <p className="text-sm font-semibold tracking-wide text-[#F59E0B] uppercase mb-3">The Problem</p>
+          <h2 className="text-balance text-3xl font-bold tracking-tight text-[#0F172A] sm:text-4xl">
+            Every missed call is money walking out the door
+          </h2>
+          <p className="mt-4 text-lg leading-relaxed text-[#64748B]">
+            Your voicemail isn't working. Here's what the data says.
+          </p>
+        </div>
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {stats.map((stat) => (
+            <div key={stat.value} className="rounded-2xl border border-[#E2E8F0] bg-white p-6 text-center">
+              <div className="mb-4 inline-flex items-center justify-center rounded-xl bg-[#0F172A] p-3 text-[#F59E0B]">
+                <stat.icon className="h-5 w-5" />
+              </div>
+              <p className="text-3xl font-bold text-[#0F172A] mb-2">{stat.value}</p>
+              <p className="text-sm text-[#64748B] leading-relaxed">{stat.label}</p>
+            </div>
+          ))}
+        </div>
+        <p className="mt-6 text-center text-xs text-[#94A3B8]">Source: Industry data from contractor service studies</p>
+      </div>
+    </section>
+  );
+}
+
+/* ─── Speed / Simplicity ─── */
+function SpeedSimplicity() {
+  const points = [
+    { icon: Rocket, text: 'Live in minutes, not weeks' },
+    { icon: Ban, text: 'No onboarding fees' },
+    { icon: CalendarOff, text: 'No weekly minimums' },
+    { icon: XCircle, text: 'No long-term contracts' },
+    { icon: Check, text: 'Cancel anytime' },
+  ];
+
+  return (
+    <section className="relative bg-[#0F172A] py-20 md:py-24">
+      <div className="pointer-events-none absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#F59E0B]/20 to-transparent" />
+      <div className="mx-auto max-w-4xl px-6 text-center">
+        <h2 className="text-2xl font-bold text-[#F8FAFC] sm:text-3xl mb-10">
+          Simple to start. Easy to stay.
+        </h2>
+        <div className="flex flex-wrap justify-center gap-4">
+          {points.map((p) => (
+            <div key={p.text} className="inline-flex items-center gap-2.5 rounded-full border border-[#334155] bg-[#1E293B]/60 px-5 py-2.5 text-sm font-medium text-[#CBD5E1]">
+              <p.icon className="h-4 w-4 text-[#F59E0B] flex-shrink-0" />
+              {p.text}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#F59E0B]/20 to-transparent" />
+    </section>
+  );
+}
+
 /* ─── Pricing ─── */
 const tiers = [
   {
@@ -347,7 +417,7 @@ function PricingSection() {
             Simple, Transparent Pricing
           </h2>
           <p className="mt-4 text-lg leading-relaxed text-[#64748B]">
-            Traditional answering services charge <span className="text-[#0F172A] font-semibold">$2.50/minute plus setup fees</span>. Your AI assistant answers every call you can't — day and night — for a fraction of the cost.
+            Traditional answering services charge <span className="text-[#0F172A] font-semibold">$2.50/minute plus $1,000 setup fees</span>. Your AI assistant answers every call you can't — day and night — for a fraction of the cost.
           </p>
           <p className="mt-2 text-sm text-[#94A3B8]">
             All plans include daytime message-taking + after-hours AI assistant
@@ -423,6 +493,14 @@ function PricingSection() {
               </button>
             </div>
           ))}
+        </div>
+
+        {/* ROI callout */}
+        <div className="mb-8 rounded-2xl bg-[#0F172A] p-8 md:p-10 text-center">
+          <p className="text-2xl font-bold text-[#F8FAFC] sm:text-3xl mb-2">
+            One captured job pays for <span className="text-[#F59E0B]">5 months</span> of service.
+          </p>
+          <p className="text-[#94A3B8] text-lg">How many calls are you missing?</p>
         </div>
 
         {/* Comparison callout */}
@@ -608,7 +686,9 @@ export default function FixMyNightProduct() {
       <Navbar />
       <Hero />
       <Features />
+      <SocialProof />
       <Industries />
+      <SpeedSimplicity />
       <PricingSection />
       <SmsConsent />
       <Cta />

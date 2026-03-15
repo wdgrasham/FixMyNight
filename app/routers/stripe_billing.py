@@ -20,14 +20,14 @@ STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 
 # Map Stripe price IDs to tier names
 PRICE_TO_TIER = {
-    "price_1T8vmdF4SIXUt9Gk4fwXzQZH": "starter",
-    "price_1T8vnEF4SIXUt9Gk1AmWw7X0": "standard",
-    "price_1T8vnnF4SIXUt9GkUAZEokFf": "pro",
+    "price_1TB2n0F4SIXUt9GkOxh9DN64": "starter",
+    "price_1TB2lRF4SIXUt9GkYaN8EJBh": "standard",
+    "price_1TB2kDF4SIXUt9Gk1oFeL5PA": "pro",
 }
 
 TIER_LABELS = {"starter": "Starter", "standard": "Standard", "pro": "Pro"}
 
-TIER_CALL_LIMITS = {"starter": 40, "standard": 100, "pro": 250}
+TIER_CALL_LIMITS = {"starter": 50, "standard": 100, "pro": 250}
 
 OVERAGE_PRICE_ID = "price_1T9BhJF4SIXUt9GkCc06OboB"
 

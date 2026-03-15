@@ -832,27 +832,18 @@ async def _analyze_transcript(transcript: str, client) -> dict:
             "call_type": "unknown", "is_emergency": False, "fee_approved": None,
         }
 
-    # Build industry context for more accurate classification
-    industry_context = ""
-    try:
-        from ..services.industry_defaults import get_industry_config
-        config = get_industry_config(
-            client.industry if client else "general",
-            (client.industry_config or {}) if client else {},
-        )
-        emergency_examples = ", ".join(config.get("emergency_examples", []))
-        industry_context = (
-            f"\nThis business is a {config['industry_label']} company ({config['service_noun']}). "
-            f"Common emergencies: {emergency_examples}. "
-            f"Calls about issues unrelated to {config['service_noun']} should be classified as 'wrong_number'.\n"
-        )
-    except Exception:
-        pass
-
     system_prompt = (
         "You analyze call transcripts for an after-hours answering service. "
-        "Extract the following fields from the transcript. Return ONLY valid JSON, no markdown.\n"
-        f"{industry_context}\n"
+        "Extract the following fields from the transcript. Return ONLY valid JSON, no markdown.\n\n"
+        "IMPORTANT CLASSIFICATION RULES:\n"
+        "- Do NOT reclassify calls based on whether the topic seems related to the business's industry. "
+        "Contractors receive calls from suppliers, inspectors, insurance companies, and other businesses — "
+        "these are all legitimate calls.\n"
+        '- Only classify as "wrong_number" if the caller explicitly said they have the wrong number '
+        "or asked for a completely different business by name.\n"
+        '- Only classify as "hangup" if there was no real conversation (silence, immediate disconnect).\n'
+        "- If the caller left any kind of message, classify as \"message\".\n"
+        "- Your job is to extract and summarize, not to judge relevance.\n\n"
         "Fields:\n"
         '- "caller_name": string or null (the caller\'s name if they gave it)\n'
         '- "caller_phone": string or null (phone number the caller provided verbally, in E.164 format like +1XXXXXXXXXX)\n'

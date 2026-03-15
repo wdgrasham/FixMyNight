@@ -29,7 +29,7 @@ async def require_portal(
     if payload.get("client_id") != client_id:
         raise HTTPException(status_code=403, detail="CLIENT_SCOPE_MISMATCH")
     result = await db.execute(
-        select(Client).where(Client.id == client_id, Client.status == "active")
+        select(Client).where(Client.id == client_id, Client.status.in_(("active", "pending_setup")))
     )
     client = result.scalar_one_or_none()
     if not client:

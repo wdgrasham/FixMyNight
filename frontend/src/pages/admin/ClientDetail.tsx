@@ -667,7 +667,7 @@ export default function ClientDetail() {
       {showDeactivate && (
         <ConfirmModal
           title="Deactivate Client"
-          message={`Are you sure you want to deactivate ${client.business_name}? Their Twilio number will stop routing calls. This can be reversed.`}
+          message={`Are you sure you want to deactivate ${client.business_name}? This will release their phone number and delete their AI assistant. The client record will be kept but will require new setup to reactivate. Proceed?`}
           confirmLabel="Deactivate"
           onConfirm={handleDeactivate}
           onCancel={() => setShowDeactivate(false)}

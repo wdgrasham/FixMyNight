@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom';
 import { ROUTES } from '../../routes';
 import {
   Menu, X, ArrowRight, Mail, Check, Star, Phone, Clock, Shield,
-  Bot, Siren, Sunrise, MessageSquare,
-  Thermometer, Droplets, Zap, KeyRound, DoorOpen, Wrench,
+  Bot, Siren, Sunrise, MessageSquare, PhoneOff, Smartphone,
+  Thermometer, Droplets, Zap, KeyRound, DoorOpen, Wrench, PanelTop,
   ShieldCheck, FileText, Scale,
 } from 'lucide-react';
 
@@ -121,11 +121,11 @@ function Hero() {
             />
           </div>
           <h1 className="text-balance text-4xl font-bold tracking-tight text-[#0F172A] sm:text-5xl md:text-6xl lg:text-7xl leading-[1.08]">
-            After-Hours AI{' '}
-            <span className="bg-gradient-to-r from-[#F59E0B] to-[#D97706] bg-clip-text text-transparent">Answering</span>
+            Never Miss a{' '}
+            <span className="bg-gradient-to-r from-[#F59E0B] to-[#D97706] bg-clip-text text-transparent">Call Again</span>
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#64748B] md:text-xl">
-            AI-powered after-hours answering for service contractors. Never miss an emergency call again.
+            Your voicemail costs you customers. Half the people who hit voicemail hang up and call your competitor. Sarah answers every call, gets their info, and texts you immediately.
           </p>
           <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
             <a
@@ -157,8 +157,8 @@ function Hero() {
         <div className="mx-auto max-w-5xl px-6">
           <div className="grid gap-8 sm:grid-cols-3 text-center">
             {[
-              { value: '24/7', label: 'After-Hours Coverage' },
-              { value: '<30s', label: 'Average Answer Time' },
+              { value: '24/7', label: 'Every Call Answered' },
+              { value: '<2s', label: 'Average Answer Time' },
               { value: '100%', label: 'Calls Captured' },
             ].map((stat) => (
               <div key={stat.label}>
@@ -176,10 +176,12 @@ function Hero() {
 
 /* ─── Features ─── */
 const features = [
-  { icon: Bot, title: 'AI Voice Agent', description: 'An intelligent AI agent answers your after-hours calls, determines caller intent, and handles each call appropriately \u2014 dispatching emergencies, logging routine calls, taking messages, and screening junk.' },
-  { icon: Siren, title: 'Emergency Dispatch', description: 'When a real emergency comes in, the AI transfers the caller directly to your on-call technician. No delays, no missed calls.' },
-  { icon: Sunrise, title: 'Morning Summaries', description: 'Every morning, get a clean summary of all overnight calls \u2014 emergencies handled, callbacks needed, messages received \u2014 delivered via email or SMS.' },
-  { icon: MessageSquare, title: 'SMS On-Call Management', description: 'Technicians manage their on-call status with simple text commands: ON, OFF, STATUS. No app downloads required.' },
+  { icon: PhoneOff, title: 'AI Answers Every Missed Call', description: 'Day or night, when you can\u2019t pick up, Sarah does. She takes messages during business hours and runs the full AI assistant after hours \u2014 no more lost leads to voicemail.' },
+  { icon: Smartphone, title: 'Instant SMS Notifications', description: 'Get a text the moment a call comes in with the caller\u2019s name, number, and what they need. No waiting until morning to find out you missed a job.' },
+  { icon: Siren, title: 'Emergency Detection & Dispatch', description: 'After hours, Sarah identifies real emergencies, collects caller info, and transfers directly to your on-call technician. No delays, no missed emergencies.' },
+  { icon: MessageSquare, title: 'On-Call Management via Text', description: 'Technicians manage their on-call status with simple text commands: ON, OFF, STATUS. No app downloads, no logins required.' },
+  { icon: Sunrise, title: 'Morning Summary Email', description: 'Every morning, get a clean summary of all overnight calls \u2014 emergencies handled, callbacks needed, messages received \u2014 delivered straight to your inbox.' },
+  { icon: Bot, title: 'Client Portal & Call Recordings', description: 'Full call history, recordings, and analytics in your client portal. See exactly what Sarah said and what your callers needed.' },
 ];
 
 function Features() {
@@ -189,13 +191,13 @@ function Features() {
         <div className="mx-auto max-w-2xl text-center mb-16">
           <p className="text-sm font-semibold tracking-wide text-[#F59E0B] uppercase mb-3">Features</p>
           <h2 className="text-balance text-3xl font-bold tracking-tight text-[#0F172A] sm:text-4xl">
-            Everything you need for after-hours coverage
+            Set up call forwarding once. We handle the rest.
           </h2>
           <p className="mt-4 text-lg leading-relaxed text-[#64748B]">
-            From the first ring to the morning debrief, FixMyNight handles it all.
+            Messages during the day, full AI assistant at night. Works with any phone system.
           </p>
         </div>
-        <div className="grid gap-6 sm:grid-cols-2">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {features.map((feature) => (
             <div
               key={feature.title}
@@ -221,7 +223,8 @@ const industries = [
   { label: 'Electrical', icon: Zap },
   { label: 'Locksmith', icon: KeyRound },
   { label: 'Garage Door', icon: DoorOpen },
-  { label: 'Appliance Repair', icon: Wrench },
+  { label: 'Glass & Window', icon: PanelTop },
+  { label: 'General Contractor', icon: Wrench },
 ];
 
 function Industries() {
@@ -257,24 +260,26 @@ function Industries() {
 const tiers = [
   {
     name: 'Starter',
-    price: 89,
-    priceId: 'price_1T8vmdF4SIXUt9Gk4fwXzQZH',
-    calls: 40,
+    price: 99,
+    priceId: 'price_1TB2n0F4SIXUt9GkOxh9DN64',
+    calls: 50,
     description: 'Perfect for solo operators and small shops',
     features: [
-      'AI voice agent answers 24/7',
-      '40 calls per month included',
+      'AI answers every missed call',
+      '50 calls per month included',
+      'Daytime message-taking',
+      'After-hours AI assistant',
       'Emergency tech dispatch',
-      'Morning call summary email',
-      'SMS on-call management',
+      'Instant SMS notifications',
+      'Morning summary email',
       'Client portal access',
     ],
     popular: false,
   },
   {
     name: 'Standard',
-    price: 169,
-    priceId: 'price_1T8vnEF4SIXUt9Gk1AmWw7X0',
+    price: 179,
+    priceId: 'price_1TB2lRF4SIXUt9GkYaN8EJBh',
     calls: 100,
     description: 'Best value for growing businesses',
     features: [
@@ -282,13 +287,14 @@ const tiers = [
       '100 calls per month included',
       'Call recordings',
       'Multi-technician support',
+      'SMS on-call management',
     ],
     popular: true,
   },
   {
     name: 'Pro',
-    price: 299,
-    priceId: 'price_1T8vnnF4SIXUt9GkUAZEokFf',
+    price: 399,
+    priceId: 'price_1TB2kDF4SIXUt9Gk1oFeL5PA',
     calls: 250,
     description: 'For multi-crew operations',
     features: [
@@ -342,13 +348,16 @@ function PricingSection() {
           </h2>
           <p className="mt-4 text-lg leading-relaxed text-[#64748B]">
             Traditional answering services charge <span className="text-[#0F172A] font-semibold">$400–600/month</span> for a human
-            who reads from a script. FixMyNight's AI agent is smarter, faster, and a fraction of the cost.
+            who reads from a script. FixMyNight's AI answers every call — day and night — for a fraction of the cost.
+          </p>
+          <p className="mt-2 text-sm text-[#94A3B8]">
+            All plans include daytime message-taking + after-hours AI assistant
           </p>
         </div>
 
         {checkoutStatus === 'success' && (
           <div className="mb-8 bg-green-50 border border-green-200 rounded-xl p-4 text-center">
-            <p className="text-green-700 font-medium">Welcome aboard! Your subscription is active. Check your email — we'll send setup instructions within the next few hours to get your after-hours line up and running.</p>
+            <p className="text-green-700 font-medium">Welcome aboard! Your subscription is active. Check your email — we'll send setup instructions within the next few hours to get your AI phone assistant up and running.</p>
           </div>
         )}
         {checkoutStatus === 'canceled' && (
@@ -386,7 +395,7 @@ function PricingSection() {
                   <span className="text-4xl font-bold text-[#0F172A]">${tier.price}</span>
                   <span className="text-[#94A3B8]">/month</span>
                 </div>
-                <p className="text-sm text-[#64748B] mt-1">{tier.calls} calls included</p>
+                <p className="text-sm text-[#64748B] mt-1">{tier.calls} calls included &middot; $1.50/extra</p>
               </div>
 
               <ul className="space-y-3 mb-8 flex-1">
@@ -421,11 +430,11 @@ function PricingSection() {
         <div className="rounded-2xl border border-[#E2E8F0] bg-white p-8 md:p-12 shadow-sm">
           <div className="grid md:grid-cols-2 gap-8 items-center">
             <div>
-              <h3 className="text-2xl font-bold text-[#0F172A] mb-3">Why switch from a traditional answering service?</h3>
+              <h3 className="text-2xl font-bold text-[#0F172A] mb-3">Why replace your voicemail?</h3>
               <p className="text-[#64748B]">
-                Most contractors pay $400–600/month for a human operator who reads from a script,
-                can't dispatch techs, and sends you a voicemail at 7am. FixMyNight does it all —
-                instantly, accurately, for a fraction of the cost.
+                Half the people who hit voicemail hang up and call your competitor.
+                FixMyNight answers every call, gets their info, and texts you immediately —
+                during the day and after hours. No more lost leads, no more missed emergencies.
               </p>
             </div>
             <div className="grid grid-cols-2 gap-4">

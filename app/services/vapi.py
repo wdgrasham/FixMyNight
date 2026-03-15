@@ -366,6 +366,15 @@ async def delete_vapi_assistant(assistant_id: str):
         )
 
 
+async def delete_vapi_phone_number(vapi_phone_number_id: str):
+    """Delete a phone number from Vapi."""
+    async with httpx.AsyncClient() as http:
+        await http.delete(
+            f"{VAPI_BASE_URL}/phone-number/{vapi_phone_number_id}",
+            headers=_vapi_headers(),
+        )
+
+
 # ---------------------------------------------------------------------------
 # Fallback assistant lifecycle
 # ---------------------------------------------------------------------------

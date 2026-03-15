@@ -26,6 +26,13 @@ export default function ClientDetail() {
   const [magicLinkError, setMagicLinkError] = useState('');
   const [duplicateNameWarning, setDuplicateNameWarning] = useState('');
 
+  // Setup & number change state
+  const [showCompleteSetup, setShowCompleteSetup] = useState(false);
+  const [setupLoading, setSetupLoading] = useState(false);
+  const [showChangeNumber, setShowChangeNumber] = useState(false);
+  const [changeNumberLoading, setChangeNumberLoading] = useState(false);
+  const [manualNumber, setManualNumber] = useState('');
+
   // Edit state
   const [editing, setEditing] = useState(false);
   const [editData, setEditData] = useState<Partial<Client>>({});
@@ -63,7 +70,7 @@ export default function ClientDetail() {
       if (costData) setCostStats(costData);
 
       // Duplicate business name warning for pending clients
-      if (clientData.status === 'pending') {
+      if (clientData.status === 'pending' || clientData.status === 'pending_setup') {
         try {
           const allClients = await api<Client[]>('/api/v1/admin/clients');
           const duplicate = allClients.find(
@@ -205,6 +212,41 @@ export default function ClientDetail() {
     }
   };
 
+  const handleCompleteSetup = async () => {
+    setSetupLoading(true);
+    setError('');
+    try {
+      const updated = await api<Client>(`/api/v1/admin/clients/${id}/complete-setup`, { method: 'POST' });
+      setClient(updated);
+      setEditData(updated);
+      setShowCompleteSetup(false);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Setup failed. Check Railway logs.');
+    } finally {
+      setSetupLoading(false);
+    }
+  };
+
+  const handleChangeNumber = async () => {
+    setChangeNumberLoading(true);
+    setError('');
+    try {
+      const body = manualNumber.trim() ? { manual_number: manualNumber.trim() } : {};
+      const updated = await api<Client>(`/api/v1/admin/clients/${id}/change-number`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      });
+      setClient(updated);
+      setEditData(updated);
+      setShowChangeNumber(false);
+      setManualNumber('');
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Number change failed. Check Railway logs.');
+    } finally {
+      setChangeNumberLoading(false);
+    }
+  };
+
   if (loading) return <LoadingSpinner />;
   if (error && !client) return <ErrorBanner message={error} />;
   if (!client) return <ErrorBanner message="Client not found." />;
@@ -218,13 +260,32 @@ export default function ClientDetail() {
           <h1 className="text-xl font-semibold text-gray-900">{client.business_name}</h1>
           <div className="flex items-center gap-2 mt-1">
             <StatusBadge status={client.status} />
-            {client.twilio_number && (
-              <span className="text-sm text-gray-500">{formatPhoneDisplay(client.twilio_number)}</span>
+            {client.twilio_number && !client.twilio_number.startsWith('pending_') && (
+              <>
+                <span className="text-sm text-gray-500">{formatPhoneDisplay(client.twilio_number)}</span>
+                <button
+                  onClick={() => setShowChangeNumber(true)}
+                  className="text-xs text-gray-400 hover:text-[#F59E0B]"
+                >
+                  Change
+                </button>
+              </>
+            )}
+            {client.twilio_number?.startsWith('pending_') && (
+              <span className="text-sm text-orange-500 italic">No phone number assigned</span>
             )}
           </div>
         </div>
         <div className="flex items-center gap-3">
           <SaveIndicator status={saveStatus} />
+          {client.status === 'pending_setup' && (
+            <button
+              onClick={() => setShowCompleteSetup(true)}
+              className="bg-[#F59E0B] text-[#0F172A] px-4 py-2 rounded-md text-sm font-semibold hover:bg-[#D97706]"
+            >
+              Complete Setup
+            </button>
+          )}
           <button
             onClick={handleSendMagicLink}
             className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-50"
@@ -611,6 +672,40 @@ export default function ClientDetail() {
           onConfirm={handleDeactivate}
           onCancel={() => setShowDeactivate(false)}
         />
+      )}
+
+      {showCompleteSetup && (
+        <ConfirmModal
+          title="Complete Setup"
+          message={`This will purchase a Twilio phone number and set up the AI assistant for ${client.business_name}. The client will receive a portal invite email. Proceed?`}
+          confirmLabel={setupLoading ? 'Setting up...' : 'Complete Setup'}
+          onConfirm={handleCompleteSetup}
+          onCancel={() => !setupLoading && setShowCompleteSetup(false)}
+        />
+      )}
+
+      {showChangeNumber && (
+        <ConfirmModal
+          title="Change Phone Number"
+          message={`This will replace the current number ${client.twilio_number ? formatPhoneDisplay(client.twilio_number) : ''} with a new number. The old number will be released. The client should update their call forwarding and any marketing materials with the new number.`}
+          confirmLabel={changeNumberLoading ? 'Changing...' : 'Change Number'}
+          onConfirm={handleChangeNumber}
+          onCancel={() => { if (!changeNumberLoading) { setShowChangeNumber(false); setManualNumber(''); } }}
+        >
+          <div className="mt-3 p-3 bg-gray-50 rounded-md">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Assign a specific number (optional)
+            </label>
+            <PhoneInput
+              value={manualNumber}
+              onChange={setManualNumber}
+              className="w-full"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Leave blank to auto-purchase a new number. Enter a number to assign one you already own in Twilio.
+            </p>
+          </div>
+        </ConfirmModal>
       )}
     </div>
   );

@@ -77,7 +77,7 @@ export interface Client {
   twilio_number: string | null;
   vapi_assistant_id: string | null;
   vapi_phone_number_id: string | null;
-  status: 'pending' | 'active' | 'inactive' | 'failed';
+  status: 'pending' | 'pending_setup' | 'active' | 'inactive' | 'failed';
   portal_password_set: boolean;
   portal_last_login: string | null;
   created_at: string;

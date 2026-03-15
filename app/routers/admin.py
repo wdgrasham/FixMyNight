@@ -1,6 +1,6 @@
 import os
 from datetime import datetime, time as dt_time, timedelta
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, func
 from typing import Optional
@@ -21,7 +21,7 @@ from ..schemas import (
 from ..utils.audit import write_audit_log
 from ..services.vapi import rebuild_vapi_assistant
 from ..services.twilio_service import send_verification_sms, send_sms
-from ..services.onboarding import provision_client
+from ..services.onboarding import provision_client, complete_setup, change_twilio_number
 from ..services.email_service import send_summary_email
 from ..services.service_monitor import get_all_service_status
 from ..auth import create_magic_link_token
@@ -288,6 +288,99 @@ async def patch_client(
             print(f"[WARNING] Portal invite email failed: {e}")
 
     await db.refresh(client)
+    return ClientResponse.model_validate(client)
+
+
+@router.post("/clients/{client_id}/complete-setup", response_model=ClientResponse)
+async def complete_client_setup(
+    client_id: str,
+    admin=Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Run automated provisioning for a pending_setup client."""
+    try:
+        client = await complete_setup(client_id, db)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        print(f"[ERROR] Complete setup failed for {client_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Setup failed: {e}")
+
+    await write_audit_log(
+        db,
+        "admin.complete_setup",
+        "admin",
+        resource_type="client",
+        resource_id=client.id,
+        client_id=client.id,
+        metadata={"twilio_number": client.twilio_number, "vapi_assistant_id": client.vapi_assistant_id},
+    )
+
+    # Send portal invite email
+    if client.contact_email:
+        try:
+            token = create_magic_link_token(str(client.id))
+            frontend_url = os.environ.get("FRONTEND_URL", "https://fixmyday.ai")
+            link = f"{frontend_url}/fixmynight/portal/setup?token={token}"
+            await send_summary_email(
+                client.contact_email,
+                f"Your FixMyNight Portal Is Ready — {client.business_name}",
+                f"Hi {client.owner_name},\n\n"
+                f"Great news! Your FixMyNight after-hours line is set up and ready to go.\n\n"
+                f"Click the link below to set your portal password and log in:\n"
+                f"{link}\n\n"
+                f"Your after-hours number: {client.twilio_number}\n\n"
+                f"Forward your business line to this number when you close for the day, "
+                f"and our AI agent will handle everything from there.\n\n"
+                f"— The FixMyNight Team",
+            )
+            print(f"[ADMIN] Portal invite sent to {client.contact_email} for client {client_id}")
+        except Exception as e:
+            print(f"[WARNING] Portal invite email failed: {e}")
+
+    return ClientResponse.model_validate(client)
+
+
+@router.post("/clients/{client_id}/change-number", response_model=ClientResponse)
+async def change_client_number(
+    client_id: str,
+    request: Request,
+    admin=Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Replace the Twilio number on a client. Optionally accepts {"manual_number": "+1..."}."""
+    body = {}
+    try:
+        body = await request.json()
+    except Exception:
+        pass
+    manual_number = body.get("manual_number") if body else None
+
+    # Look up old number for audit log
+    result = await db.execute(select(Client).where(Client.id == client_id))
+    existing = result.scalar_one_or_none()
+    if not existing:
+        raise HTTPException(status_code=404, detail="CLIENT_NOT_FOUND")
+    old_number = existing.twilio_number
+
+    try:
+        client = await change_twilio_number(client_id, db, manual_number)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        print(f"[ERROR] Change number failed for {client_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Number change failed: {e}")
+
+    await write_audit_log(
+        db,
+        "admin.change_number",
+        "admin",
+        resource_type="client",
+        resource_id=client.id,
+        client_id=client.id,
+        metadata={"old_number": old_number, "new_number": client.twilio_number},
+    )
+
     return ClientResponse.model_validate(client)
 
 

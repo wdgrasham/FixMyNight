@@ -102,45 +102,52 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
     event_type = event["type"]
 
     if event_type == "checkout.session.completed":
-        session = event["data"]["object"]
-        metadata = session.get("metadata", {})
-        client_id = metadata.get("client_id")
-        tier = metadata.get("tier")
-        customer_id = session.get("customer")
-        subscription_id = session.get("subscription")
+        try:
+            session = event["data"]["object"]
+            metadata = session.get("metadata") or {}
+            client_id = metadata.get("client_id")
+            tier = metadata.get("tier")
+            customer_id = session.get("customer")
+            subscription_id = session.get("subscription")
 
-        plan_limit = TIER_CALL_LIMITS.get(tier)
+            plan_limit = TIER_CALL_LIMITS.get(tier)
 
-        if client_id:
-            # Existing client — link Stripe IDs and set plan limit
-            await db.execute(
-                update(Client)
-                .where(Client.id == client_id)
-                .values(
-                    stripe_customer_id=customer_id,
-                    stripe_subscription_id=subscription_id,
-                    subscription_tier=tier,
-                    subscription_status="active",
-                    plan_call_limit=plan_limit,
-                    updated_at=datetime.utcnow(),
+            if client_id:
+                # Existing client — link Stripe IDs and set plan limit
+                await db.execute(
+                    update(Client)
+                    .where(Client.id == client_id)
+                    .values(
+                        stripe_customer_id=customer_id,
+                        stripe_subscription_id=subscription_id,
+                        subscription_tier=tier,
+                        subscription_status="active",
+                        plan_call_limit=plan_limit,
+                        updated_at=datetime.utcnow(),
+                    )
                 )
-            )
-            await db.commit()
-            print(f"[STRIPE] Checkout completed: client={client_id} tier={tier} sub={subscription_id}")
-        else:
-            # New signup — auto-create client
-            await _handle_new_signup(db, session, tier, customer_id, subscription_id, plan_limit)
+                await db.commit()
+                print(f"[STRIPE] Checkout completed: client={client_id} tier={tier} sub={subscription_id}")
+            else:
+                # New signup — auto-create client
+                await _handle_new_signup(db, session, tier, customer_id, subscription_id, plan_limit)
 
-        # Add overage metered price as second subscription item
-        if subscription_id:
-            try:
-                stripe.SubscriptionItem.create(
-                    subscription=subscription_id,
-                    price=OVERAGE_PRICE_ID,
-                )
-                print(f"[STRIPE] Added overage price item to subscription {subscription_id}")
-            except Exception as e:
-                print(f"[WARNING] Failed to add overage price item: {e}")
+            # Add overage metered price as second subscription item
+            if subscription_id:
+                try:
+                    stripe.SubscriptionItem.create(
+                        subscription=subscription_id,
+                        price=OVERAGE_PRICE_ID,
+                    )
+                    print(f"[STRIPE] Added overage price item to subscription {subscription_id}")
+                except Exception as e:
+                    print(f"[WARNING] Failed to add overage price item: {e}")
+        except Exception as e:
+            print(f"[ERROR] checkout.session.completed handler crashed: {e}")
+            import traceback
+            traceback.print_exc()
+            # Return 200 so Stripe stops retrying — the error is logged for manual review
+            return {"received": True, "error": "handler_failed"}
 
     elif event_type in (
         "customer.subscription.updated",
@@ -195,21 +202,21 @@ async def _handle_new_signup(db, session, tier, customer_id, subscription_id, pl
             print(f"[STRIPE] Duplicate webhook — customer {customer_id} already exists, skipping")
             return
 
-    # Extract custom fields
-    custom_fields = session.get("custom_fields", [])
+    # Extract custom fields — use `or` to handle None values from Stripe
+    custom_fields = session.get("custom_fields") or []
     custom_data = {}
     for field in custom_fields:
         key = field.get("key", "")
-        text_val = field.get("text", {})
+        text_val = field.get("text") or {}
         custom_data[key] = text_val.get("value", "") if isinstance(text_val, dict) else ""
 
     business_name = custom_data.get("business_name", "").strip() or "New Business"
     owner_name = custom_data.get("owner_name", "").strip() or "Owner"
 
-    # Get email and phone from customer_details (collected by Stripe)
-    customer_details = session.get("customer_details", {})
-    owner_email = customer_details.get("email", "")
-    owner_phone = customer_details.get("phone", "") or ""
+    # Get email and phone from customer_details — use `or` to handle None from Stripe
+    customer_details = session.get("customer_details") or {}
+    owner_email = customer_details.get("email") or ""
+    owner_phone = customer_details.get("phone") or ""
 
     # Normalize phone — Stripe returns E.164 format already, but handle edge cases
     if owner_phone and not owner_phone.startswith("+"):

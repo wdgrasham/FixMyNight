@@ -39,6 +39,7 @@
 - [x] SendGrid monitoring enhanced (today/month stats, plan info)
 - [x] SVG gap between hero and stats bar fixed
 - [x] Silence timeout reduced (60s → 30s)
+- [x] Stripe Starter description updated to 50 calls
 
 ## Deferred to V1.1
 

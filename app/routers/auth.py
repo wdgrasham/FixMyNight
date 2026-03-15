@@ -71,7 +71,7 @@ async def portal_login(
     db: AsyncSession = Depends(get_db),
 ):
     query = select(Client).where(
-        Client.contact_email == payload.email, Client.status == "active"
+        Client.contact_email == payload.email, Client.status.in_(("active", "pending_setup"))
     )
     if payload.client_id:
         query = query.where(Client.id == payload.client_id)
@@ -148,7 +148,7 @@ async def get_client_info(client_id: str, db: AsyncSession = Depends(get_db)):
     except ValueError:
         raise HTTPException(status_code=404, detail="CLIENT_NOT_FOUND")
     result = await db.execute(
-        select(Client.business_name).where(Client.id == client_id, Client.status == "active")
+        select(Client.business_name).where(Client.id == client_id, Client.status.in_(("active", "pending_setup")))
     )
     name = result.scalar_one_or_none()
     if not name:

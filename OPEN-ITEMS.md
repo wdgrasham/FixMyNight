@@ -52,6 +52,7 @@
 ## Deferred to V2 (Daytime Upgraded Tier)
 
 - [ ] **Daytime upgraded tier (daytime_enabled = TRUE)** — Add emergency detection, qualification questions, FAQ answering, scheduling preferences, urgent SMS for emergencies. Basic tier (FALSE) is message-only.
+- [ ] **Daytime AI Receptionist portal toggle** — Currently hidden from client portal. When V2 is ready, add it back as a visible toggle that triggers an upgrade flow (shows pricing, requires plan change or add-on purchase before enabling). Should not be a free self-service toggle — it must be tied to billing.
 - [ ] **Daytime emergency fee** — Configurable per client, separate from evening fee. Evaluate after client feedback.
 - [ ] **Daytime emergency transfer** — Evaluate whether to attempt transfer or just send urgent SMS during business hours.
 

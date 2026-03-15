@@ -24,6 +24,7 @@ export default function ClientDetail() {
   const [showDeactivate, setShowDeactivate] = useState(false);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [magicLinkError, setMagicLinkError] = useState('');
+  const [duplicateNameWarning, setDuplicateNameWarning] = useState('');
 
   // Edit state
   const [editing, setEditing] = useState(false);
@@ -60,6 +61,23 @@ export default function ClientDetail() {
       setTechs(techData);
       setEditData(clientData);
       if (costData) setCostStats(costData);
+
+      // Duplicate business name warning for pending clients
+      if (clientData.status === 'pending_setup' || clientData.status === 'pending') {
+        try {
+          const allClients = await api<Client[]>('/api/v1/admin/clients');
+          const duplicate = allClients.find(
+            (c) => c.id !== clientData.id && c.business_name.toLowerCase() === clientData.business_name.toLowerCase()
+          );
+          if (duplicate) {
+            setDuplicateNameWarning(
+              `A client with this name already exists (${duplicate.status}). Please verify this is a new signup.`
+            );
+          }
+        } catch {
+          // Non-critical — don't block page load
+        }
+      }
     } catch {
       setError('Failed to load client data.');
     } finally {
@@ -223,6 +241,13 @@ export default function ClientDetail() {
       </div>
 
       {magicLinkError && <ErrorBanner message={magicLinkError} onDismiss={() => setMagicLinkError('')} />}
+
+      {duplicateNameWarning && (
+        <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded-md p-3 flex items-start gap-2">
+          <span className="text-yellow-600 text-lg leading-none">&#9888;</span>
+          <p className="text-sm text-yellow-800">{duplicateNameWarning}</p>
+        </div>
+      )}
 
       {vapiNotice && (
         <div className="mb-4 bg-brand-50 border border-brand-100 rounded-md p-3">

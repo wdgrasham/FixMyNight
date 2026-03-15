@@ -1,3 +1,4 @@
+from datetime import time
 from sqlalchemy import (
     Column, String, Boolean, DECIMAL, ARRAY, Integer, Text, ForeignKey, Date,
     DateTime, Index, Time,
@@ -33,8 +34,8 @@ class Client(Base):
     business_hours_emergency_dispatch = Column(Boolean, nullable=False, default=True)
     sleep_window_start = Column(Time)
     sleep_window_end = Column(Time)
-    summary_send_time = Column(Time, nullable=False, default="07:30:00")
-    callback_expected_time = Column(Time, nullable=False, default="09:00:00")
+    summary_send_time = Column(Time, nullable=False, default=time(7, 30))
+    callback_expected_time = Column(Time, nullable=False, default=time(9, 0))
     agent_name = Column(String, nullable=False, default="Sarah")
     vapi_phone_number_id = Column(String)
     status = Column(String, nullable=False, default="pending")

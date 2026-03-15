@@ -71,29 +71,41 @@ Work through in order. Do not skip ahead.
 ## Key Patterns to Enforce
 
 - `{agent_name}` is always dynamic — never hardcode "Sarah"
-- 6 call types: `emergency`, `routine`, `message`, `wrong_number`, `hangup`, `unknown`
+- 7 call types: `emergency`, `routine`, `message`, `wrong_number`, `hangup`, `business_hours_missed`, `unknown`
 - `emergency_enabled` defaults FALSE — smart voicemail is baseline, dispatch is opt-in
 - `clients.status` is TEXT (`pending`/`active`/`inactive`/`failed`) — not a boolean
 - Morning summary groups: EMERGENCIES → CALLBACKS NEEDED → MESSAGES → "Also received" one-liner
 - Vapi rebuild triggers: any change to the fields in `VAPI_REBUILD_TRIGGERS` set
 - The `routing_rules` table is for cron jobs only — it does NOT gate call routing
 
-## Current Status (2026-03-14)
+## Current Status (2026-03-15)
 
-All 5 build phases are **COMPLETE**. Phase 5 QA passed all hard-block test
-scenarios via live phone calls and SMS against production (Stellar HVAC).
+All 5 build phases are **COMPLETE**. Product repositioned as 24/7 AI voicemail
+replacement (not just after-hours). Stripe checkout working with new pricing.
 
 **Deployed and working:**
 - Dynamic per-call prompts via assistant-request webhook
-- Emergency dispatch with transfer to on-call tech
-- Sleep window (no transfers, urgent callback message)
+- Three time windows: business_hours, evening, sleep
+- Business hours: message-taking prompt (basic daytime tier, free for all plans)
+- Evening: full AI assistant with emergency detection + dispatch
+- Sleep: no transfers, urgent callback flagging
 - SMS on-call management (ON/OFF/STATUS)
-- Morning summary email (claim-before-send, no duplicates)
-- Client portal settings (business hours, sleep window, emergency fee)
+- Morning summary email (claim-before-send, date-bounded query)
+- Missed call SMS notifications (configurable phone list)
+- Client portal settings (business hours, sleep window, emergency fee, missed call phones)
+- Transcript analysis: extract-only, never reclassifies by topic
 - Anti-abuse with caller slang tolerance
 - Prompt injection protection
+- Stripe checkout ($99/$179/$399 tiers)
+- Product page: social proof, ROI callout, speed/simplicity section
+
+**Key patterns:**
+- 7 call types: `emergency`, `routine`, `message`, `wrong_number`, `hangup`, `business_hours_missed`, `unknown`
+- Basic daytime tier = message-only (no emergency detection, no transfer)
+- Transcript analysis extracts and summarizes — never judges relevance
 
 **Deferred to V1.1:** Interruption/endpointing, silence prompt sequencing.
+**Deferred to V2:** Daytime upgraded tier (emergency detection, FAQ, scheduling).
 See `OPEN-ITEMS.md` for full list.
 
 ## Custom Commands Available

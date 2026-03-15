@@ -1143,16 +1143,90 @@ The upgraded tier will add: emergency detection, qualification questions, FAQ
 answering, scheduling preferences, urgent SMS for emergencies, and a separate
 daytime emergency fee (distinct from the evening fee).
 
-### Outstanding Items After March 14
+## Launch Prep Session — 2026-03-15
+
+### Decision 9: Basic Daytime Message-Taking Included Free for All Tiers
+
+**Context:** Business hours calls previously told callers "we're closed" even
+when the business was open. Needed a daytime call handling path.
+
+**Decision:** Basic daytime message-taking (`daytime_enabled = FALSE`) is
+included free for all subscription tiers. Sarah takes a message, collects
+name and callback number, and sends an SMS notification. No emergency
+detection, no qualification, no transfer — just capture and deliver.
+
+This is the baseline experience. The upgraded tier (`daytime_enabled = TRUE`)
+with emergency detection, FAQ, scheduling, etc. will be a V2 upsell.
+
+### Decision 10: Transcript Analysis Never Reclassifies by Topic
+
+**Context:** Claude Haiku transcript analysis was reclassifying calls as
+`wrong_number` when the topic seemed unrelated to the business's industry.
+Two calls about "Joe and the mower" were classified as wrong number for an
+HVAC company — but contractors get calls from suppliers, inspectors,
+insurance companies, and other businesses.
+
+**Decision:** Transcript analysis extracts and summarizes only. It never
+judges whether a call is "relevant" to the business. `wrong_number` is only
+assigned if the caller explicitly said they have the wrong number or asked
+for a different business by name. The contractor sees everything and decides
+what matters.
+
+### Decision 11: Pricing Changed to $99/$179/$399
+
+**Context:** Original pricing was $89/$169/$299 with 40/100/250 calls.
+Repositioning as 24/7 voicemail replacement (not just after-hours) justifies
+higher value and price.
+
+**Decision:**
+- Starter: $99/mo, 50 calls (was $89/40)
+- Standard: $179/mo, 100 calls (was $169/100)
+- Pro: $399/mo, 250 calls (was $299/250)
+- All tiers: $1.50/call overage (unchanged)
+- All tiers include daytime message-taking + after-hours AI
+
+New Stripe price IDs created; old prices archived.
+
+### Decision 12: Product Repositioned as 24/7 Voicemail Replacement
+
+**Context:** FixMyNight was positioned as "after-hours AI answering service."
+With the addition of daytime message-taking, it's now a full voicemail
+replacement that works 24/7.
+
+**Decision:** Marketing messaging changed from after-hours focus to:
+- "Never Miss a Call Again"
+- "Your voicemail costs you customers"
+- "Set up call forwarding once. We handle the rest."
+- Competitive framing: "$2.50/minute plus $1,000 setup fees" vs our flat rate
+
+The product name stays FixMyNight (brand recognition), but messaging
+emphasizes 24/7 coverage.
+
+### Decision 13: Morning Summary Uses Date-Bounded Query
+
+**Context:** Morning summary was pulling all historical calls with
+`morning_summary_sent_at == None`, causing test calls from weeks ago to
+appear in summaries.
+
+**Decision:** Query now includes `Call.created_at >= cutoff` where cutoff
+is the start of the previous summary date (or 48 hours ago for the first
+summary). The `prev_summary_date` is captured before the claim-before-send
+step to avoid stale state.
+
+### Outstanding Items After March 15
 
 - Interruption/endpointing settings (V1.1)
 - Silence prompt sequencing (V1.1)
 - Transfer failure clean verification test
 - Stripe test mode → live mode
 - Fallback assistant verification test
-- Daytime upgraded tier (daytime_enabled = TRUE)
+- Daytime upgraded tier (V2)
 - Daytime emergency fee and transfer evaluation
+- FSM integration evaluation
+- Spanish language support evaluation
+- Carrier forwarding setup guide
+- Clear Stellar HVAC test data before go-live
 
 ---
 
-*This document is the authoritative record of all V1.5 and V1.6 decisions. Any implementation that contradicts this document contains an error. Last updated: 2026-03-14.*
+*This document is the authoritative record of all V1.5 and V1.6 decisions. Any implementation that contradicts this document contains an error. Last updated: 2026-03-15.*

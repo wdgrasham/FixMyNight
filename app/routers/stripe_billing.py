@@ -1,10 +1,12 @@
 import os
 import json
 import secrets
+import uuid
 import stripe
 from fastapi import APIRouter, Request, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
 from datetime import datetime
 
 from ..database import get_db
@@ -184,6 +186,15 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
 
 async def _handle_new_signup(db, session, tier, customer_id, subscription_id, plan_limit=None):
     """Auto-create a client record from Stripe checkout data."""
+    # Duplicate-webhook protection: if this Stripe customer already exists, skip creation
+    if customer_id:
+        existing = await db.execute(
+            select(Client).where(Client.stripe_customer_id == customer_id)
+        )
+        if existing.scalar_one_or_none():
+            print(f"[STRIPE] Duplicate webhook — customer {customer_id} already exists, skipping")
+            return
+
     # Extract custom fields
     custom_fields = session.get("custom_fields", [])
     custom_data = {}
@@ -214,27 +225,32 @@ async def _handle_new_signup(db, session, tier, customer_id, subscription_id, pl
     random_password = secrets.token_urlsafe(16)
     password_hash = hash_password(random_password)
 
-    # Create client record
-    client = Client(
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
-        business_name=business_name,
-        owner_name=owner_name,
-        owner_phone=owner_phone,
-        contact_email=owner_email,
-        industry="general",
-        twilio_number="pending",
-        status="pending_setup",
-        stripe_customer_id=customer_id,
-        stripe_subscription_id=subscription_id,
-        subscription_tier=tier,
-        subscription_status="active",
-        plan_call_limit=plan_limit,
-        portal_password_hash=password_hash,
-    )
-    db.add(client)
-    await db.commit()
-    await db.refresh(client)
+    # Create client record — unique placeholder avoids UNIQUE constraint on twilio_number
+    try:
+        client = Client(
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+            business_name=business_name,
+            owner_name=owner_name,
+            owner_phone=owner_phone,
+            contact_email=owner_email,
+            industry="general",
+            twilio_number=f"pending_{uuid.uuid4().hex[:8]}",
+            status="pending_setup",
+            stripe_customer_id=customer_id,
+            stripe_subscription_id=subscription_id,
+            subscription_tier=tier,
+            subscription_status="active",
+            plan_call_limit=plan_limit,
+            portal_password_hash=password_hash,
+        )
+        db.add(client)
+        await db.commit()
+        await db.refresh(client)
+    except IntegrityError as e:
+        await db.rollback()
+        print(f"[ERROR] Stripe signup IntegrityError (likely duplicate): {e}")
+        return
 
     tier_label = TIER_LABELS.get(tier, tier)
     print(f"[STRIPE] New signup created: client={client.id} business={business_name} tier={tier}")
